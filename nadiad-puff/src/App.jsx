@@ -1,48 +1,174 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 
 const fl = document.createElement("link");
 fl.rel = "stylesheet";
-fl.href = "https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;600;700;800;900&family=Poppins:wght@400;500;600;700&display=swap";
+fl.href = "https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800;900&family=Nunito:wght@400;600;700;800;900&family=Baloo+2:wght@700;800;900&display=swap";
 document.head.appendChild(fl);
-
-const ADMINS = [
-  { username: "owner",   password: "nadiad@puff1", name: "Owner" },
-  { username: "manager", password: "nadiad@puff2", name: "Manager" },
-];
-
-const INIT_MENU = [
-  { id:1,  name:"Veg Puff",       price:15, cat:"Puffs",  emoji:"🥐", stock:60,  desc:"Crispy flaky pastry with spiced veggies" },
-  { id:2,  name:"Paneer Puff",    price:20, cat:"Puffs",  emoji:"🧀", stock:50,  desc:"Stuffed with fresh cottage cheese masala" },
-  { id:3,  name:"Cheese Puff",    price:25, cat:"Puffs",  emoji:"🫓", stock:40,  desc:"Melted cheese in golden pastry shell" },
-  { id:4,  name:"Aloo Puff",      price:15, cat:"Puffs",  emoji:"🥔", stock:55,  desc:"Classic spiced potato filling" },
-  { id:5,  name:"Corn Puff",      price:20, cat:"Puffs",  emoji:"🌽", stock:35,  desc:"Sweet corn with mild spices" },
-  { id:6,  name:"Chocolate Puff", price:30, cat:"Sweet",  emoji:"🍫", stock:25,  desc:"Warm chocolate-filled sweet puff" },
-  { id:7,  name:"Jam Puff",       price:20, cat:"Sweet",  emoji:"🍓", stock:30,  desc:"Strawberry jam in soft pastry" },
-  { id:8,  name:"Plain Tea",      price:10, cat:"Drinks", emoji:"☕", stock:999, desc:"Fresh brewed hot tea" },
-  { id:9,  name:"Masala Tea",     price:15, cat:"Drinks", emoji:"🫖", stock:999, desc:"Aromatic spiced masala chai" },
-  { id:10, name:"Cold Drink",     price:20, cat:"Drinks", emoji:"🥤", stock:60,  desc:"Chilled cold beverages" },
-  { id:11, name:"Water Bottle",   price:15, cat:"Drinks", emoji:"💧", stock:80,  desc:"500ml packaged drinking water" },
-];
-
-const CATS = ["All","Puffs","Sweet","Drinks"];
-const SC = { Pending:"#E85D04", Preparing:"#F48C06", Ready:"#2D6A4F", Delivered:"#457B9D", Cancelled:"#9E2A2B" };
 
 const styleEl = document.createElement("style");
 styleEl.textContent = `
-  @keyframes fadeIn  { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
-  @keyframes slideUp { from{opacity:0;transform:translateY(40px)} to{opacity:1;transform:translateY(0)} }
-  @keyframes pop     { 0%{transform:scale(.8);opacity:0} 70%{transform:scale(1.08)} 100%{transform:scale(1);opacity:1} }
-  .fadein  { animation: fadeIn  .35s ease both }
-  .slideup { animation: slideUp .4s  ease both }
-  .pop     { animation: pop     .4s  ease both }
-  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
-  ::-webkit-scrollbar{width:4px;height:4px}
-  ::-webkit-scrollbar-thumb{background:#FFD0A8;border-radius:4px}
-  input:focus,select:focus{outline:none;border-color:#E85D04!important;box-shadow:0 0 0 3px rgba(232,93,4,.15)}
-  button:active{transform:scale(.97)}
+  @keyframes fadeUp  { from{opacity:0;transform:translateY(18px)} to{opacity:1;transform:translateY(0)} }
+  @keyframes pop     { 0%{transform:scale(.82);opacity:0} 65%{transform:scale(1.06)} 100%{transform:scale(1);opacity:1} }
+  @keyframes pulse   { 0%,100%{transform:scale(1)} 50%{transform:scale(1.07)} }
+  @keyframes float   { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-7px)} }
+  @keyframes wiggle  { 0%,100%{transform:rotate(0deg)} 25%{transform:rotate(-9deg)} 75%{transform:rotate(9deg)} }
+  @keyframes toastIn { from{opacity:0;transform:translate(-50%,28px)} to{opacity:1;transform:translate(-50%,0)} }
+  @keyframes slideIn { from{opacity:0;transform:translateY(-10px)} to{opacity:1;transform:translateY(0)} }
+  @keyframes shimmer { 0%{opacity:.5} 50%{opacity:1} 100%{opacity:.5} }
+  .fadeup  { animation: fadeUp  .38s cubic-bezier(.22,1,.36,1) both }
+  .pop     { animation: pop     .44s cubic-bezier(.34,1.56,.64,1) both }
+  .slidein { animation: slideIn .3s ease both }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; margin:0; padding:0; }
+  html,body { background:#FFF7EE; }
+  ::-webkit-scrollbar{width:3px;height:3px}
+  ::-webkit-scrollbar-thumb{background:#E8A87C;border-radius:4px}
+  ::-webkit-scrollbar-track{background:transparent}
+  input:focus,select:focus,textarea:focus { outline:none!important; }
+  button { font-family:'Nunito',sans-serif; }
+  button:active { transform:scale(.96)!important; }
+  .no-scroll { scrollbar-width:none; -ms-overflow-style:none; }
+  .no-scroll::-webkit-scrollbar { display:none; }
+  .card-lift { transition: transform .22s ease, box-shadow .22s ease; }
+  .card-lift:hover { transform:translateY(-4px); box-shadow:0 14px 40px rgba(180,70,10,.13)!important; }
+  .hit-badge { animation: pulse 2.2s ease-in-out infinite; }
+  ::placeholder { color: #C8A898; }
 `;
 document.head.appendChild(styleEl);
 
+// ─── Palette ──────────────────────────────────────────────────────
+const P = {
+  bg:       "#FFF7EE",   // warm cream page bg
+  bgAlt:    "#FFF2E2",   // slightly deeper cream for sections
+  surface:  "#FFFFFF",   // pure white cards
+  surfaceB: "#FFF9F4",   // tinted card bg
+  border:   "#F0DDD0",   // soft peach border
+  borderFocus:"#D4580E", // focus ring
+  orange:   "#D4580E",   // brand primary
+  orangeL:  "#F07828",   // lighter orange
+  orangeXL: "#FFE8D6",   // very light orange tint
+  amber:    "#E8920A",   // warm amber
+  amberL:   "#FFF3D0",   // light amber
+  green:    "#2A7A4A",   // pure veg green
+  greenL:   "#E6F7EE",   // light green
+  red:      "#C42020",
+  redL:     "#FDECEA",
+  blue:     "#1D5E8A",
+  blueL:    "#E8F3FB",
+  text:     "#1E0A02",   // near-black warm
+  textMid:  "#6B3D20",   // medium brown
+  textSoft: "#A07050",   // muted brown
+  textFaint:"#C8A898",   // very faint
+};
+
+// ─── Category config ──────────────────────────────────────────────
+const CAT_CFG = {
+  All:        { icon:"🍽️", color:"#D4580E", bg:"#FFE8D6" },
+  Regular:    { icon:"🥐", color:"#A0460A", bg:"#FCEEDE" },
+  "Sev Sing": { icon:"🥜", color:"#B56010", bg:"#FFF0DC" },
+  Paneer:     { icon:"🟡", color:"#C4880A", bg:"#FFF7DA" },
+  Makhani:    { icon:"🧈", color:"#9A7010", bg:"#FFF8DC" },
+  Mexican:    { icon:"🌮", color:"#4A8C1C", bg:"#EEF8E0" },
+  Tandoori:   { icon:"🔴", color:"#C03010", bg:"#FDEEE0" },
+  "Peri Peri":{ icon:"🔥", color:"#C01818", bg:"#FDEAE0" },
+  Cheesy:     { icon:"🧀", color:"#B07000", bg:"#FFF6DC" },
+  Exotics:    { icon:"⭐", color:"#7040B0", bg:"#F4EEFF" },
+  Punjabi:    { icon:"🟠", color:"#C44C18", bg:"#FDEEDE" },
+  Special:    { icon:"👑", color:"#9A6800", bg:"#FFF8D8" },
+};
+const CATS = Object.keys(CAT_CFG);
+
+const STATUS_C = {
+  Pending:   { fg:"#C44C00", bg:"#FFF0E4" },
+  Preparing: { fg:"#B07000", bg:"#FFF8DC" },
+  Ready:     { fg:"#2A7A4A", bg:"#E6F7EE" },
+  Delivered: { fg:"#1D5E8A", bg:"#E8F3FB" },
+  Cancelled: { fg:"#C42020", bg:"#FDECEA" },
+};
+
+const ADMINS = [
+  { username:"owner",   password:"nadiad@puff1", name:"Owner" },
+  { username:"manager", password:"nadiad@puff2", name:"Manager" },
+];
+
+const INIT_MENU = [
+  // REGULAR
+  { id:101, name:"Regular Puff",          price:25, cat:"Regular",   emoji:"🥐", stock:60, popular:false, desc:"Classic crispy flaky puff, timeless favourite" },
+  { id:102, name:"Schezwan Puff",         price:30, cat:"Regular",   emoji:"🌶️", stock:55, popular:true,  desc:"Spicy Schezwan sauce in flaky pastry" },
+  { id:103, name:"Garlic Puff",           price:30, cat:"Regular",   emoji:"🧄", stock:50, popular:false, desc:"Aromatic garlic-infused golden puff" },
+  { id:104, name:"Chatni Puff",           price:30, cat:"Regular",   emoji:"🌿", stock:45, popular:false, desc:"Tangy green chutney-filled pastry" },
+  { id:105, name:"Butter Puff",           price:30, cat:"Regular",   emoji:"🧈", stock:50, popular:true,  desc:"Rich buttery pastry, melt-in-mouth" },
+  // SEV SING
+  { id:201, name:"Sev Puff",              price:30, cat:"Sev Sing",  emoji:"🥐", stock:60, popular:false, desc:"Crunchy sev loaded puff" },
+  { id:202, name:"Sing Puff",             price:30, cat:"Sev Sing",  emoji:"🥜", stock:55, popular:false, desc:"Roasted groundnut puff" },
+  { id:203, name:"Chatni Sev Puff",       price:40, cat:"Sev Sing",  emoji:"🌿", stock:45, popular:false, desc:"Chatni with crunchy sev" },
+  { id:204, name:"Schezwan Sev Puff",     price:40, cat:"Sev Sing",  emoji:"🌶️", stock:40, popular:false, desc:"Fiery Schezwan with sev crunch" },
+  { id:205, name:"Garlic Sev Puff",       price:40, cat:"Sev Sing",  emoji:"🧄", stock:45, popular:false, desc:"Garlic flavoured with sev" },
+  { id:206, name:"Sev Sing Puff",         price:40, cat:"Sev Sing",  emoji:"🥜", stock:50, popular:true,  desc:"Best of both – sev & sing combo" },
+  { id:207, name:"Sev Butter Puff",       price:40, cat:"Sev Sing",  emoji:"🧈", stock:40, popular:false, desc:"Buttery sev delight" },
+  { id:208, name:"Sev Mayonnaise Puff",   price:50, cat:"Sev Sing",  emoji:"🤍", stock:40, popular:false, desc:"Creamy mayo with crunchy sev" },
+  { id:209, name:"Sev Malai Puff",        price:50, cat:"Sev Sing",  emoji:"🫙", stock:35, popular:false, desc:"Malai richness with sev texture" },
+  { id:210, name:"Sev Sing Malai Puff",   price:60, cat:"Sev Sing",  emoji:"⭐", stock:35, popular:true,  desc:"Triple combo – rich & indulgent" },
+  { id:211, name:"Sev Sing Cheese Puff",  price:60, cat:"Sev Sing",  emoji:"🧀", stock:30, popular:true,  desc:"Ultimate cheese sev sing combo" },
+  // PANEER
+  { id:301, name:"Paneer Puff",           price:40, cat:"Paneer",    emoji:"🟡", stock:50, popular:false, desc:"Fresh cottage cheese masala filling" },
+  { id:302, name:"Sev Paneer Puff",       price:50, cat:"Paneer",    emoji:"🥐", stock:45, popular:true,  desc:"Sev crunch with soft paneer" },
+  { id:303, name:"Schezwan Paneer Puff",  price:50, cat:"Paneer",    emoji:"🌶️", stock:40, popular:false, desc:"Spicy Schezwan paneer fusion" },
+  { id:304, name:"Garlic Paneer Puff",    price:50, cat:"Paneer",    emoji:"🧄", stock:40, popular:false, desc:"Aromatic garlic with creamy paneer" },
+  { id:305, name:"Tandoori Paneer Puff",  price:50, cat:"Paneer",    emoji:"🔴", stock:35, popular:true,  desc:"Smoky tandoori spiced paneer" },
+  { id:306, name:"Makhani Paneer Puff",   price:50, cat:"Paneer",    emoji:"🧈", stock:35, popular:false, desc:"Buttery makhani gravy with paneer" },
+  { id:307, name:"Chatni Paneer Puff",    price:60, cat:"Paneer",    emoji:"🌿", stock:30, popular:false, desc:"Tangy chatni with cottage cheese" },
+  { id:308, name:"Sev Sing Paneer Puff",  price:60, cat:"Paneer",    emoji:"⭐", stock:25, popular:true,  desc:"Ultimate paneer with sev & sing" },
+  // MAKHANI
+  { id:401, name:"Makhani Puff",          price:30, cat:"Makhani",   emoji:"🧈", stock:55, popular:false, desc:"Rich creamy makhani-inspired filling" },
+  { id:402, name:"Makhani Sev Puff",      price:40, cat:"Makhani",   emoji:"🥐", stock:45, popular:false, desc:"Makhani sauce with sev crunch" },
+  { id:403, name:"Makhani Paneer Puff",   price:50, cat:"Makhani",   emoji:"🟡", stock:40, popular:true,  desc:"Paneer in creamy makhani" },
+  { id:404, name:"Makhani Cheese Puff",   price:50, cat:"Makhani",   emoji:"🧀", stock:35, popular:false, desc:"Melted cheese with makhani base" },
+  // MEXICAN
+  { id:501, name:"Mexican Puff",          price:40, cat:"Mexican",   emoji:"🌮", stock:50, popular:false, desc:"Zesty Mexican spice blend" },
+  { id:502, name:"Mexican Sev Puff",      price:50, cat:"Mexican",   emoji:"🌶️", stock:40, popular:false, desc:"Mexican spice with sev crunch" },
+  { id:503, name:"Mexican Sing Puff",     price:50, cat:"Mexican",   emoji:"🥜", stock:40, popular:false, desc:"Mexican & groundnut fusion" },
+  { id:504, name:"Mexican Paneer Puff",   price:50, cat:"Mexican",   emoji:"🟡", stock:35, popular:true,  desc:"Paneer with Mexican seasoning" },
+  { id:505, name:"Mexican Cheese Puff",   price:60, cat:"Mexican",   emoji:"🧀", stock:30, popular:false, desc:"Cheese with bold Mexican spices" },
+  // TANDOORI
+  { id:601, name:"Tandoori Puff",         price:30, cat:"Tandoori",  emoji:"🔴", stock:55, popular:false, desc:"Smoky tandoori spiced classic" },
+  { id:602, name:"Tandoori Sev Puff",     price:40, cat:"Tandoori",  emoji:"🥐", stock:45, popular:false, desc:"Tandoori flavour with sev" },
+  { id:603, name:"Tandoori Paneer Puff",  price:50, cat:"Tandoori",  emoji:"🟡", stock:40, popular:true,  desc:"Tandoori marinated paneer puff" },
+  { id:604, name:"Tandoori Cheese Puff",  price:60, cat:"Tandoori",  emoji:"🧀", stock:30, popular:false, desc:"Cheese with smoky tandoori flavour" },
+  // PERI PERI
+  { id:701, name:"Peri Peri Puff",        price:40, cat:"Peri Peri", emoji:"🔥", stock:55, popular:true,  desc:"Hot & spicy African-style peri peri" },
+  { id:702, name:"Peri Peri Sev Puff",    price:50, cat:"Peri Peri", emoji:"🌶️", stock:45, popular:false, desc:"Peri peri heat with sev crunch" },
+  { id:703, name:"Peri Peri Sing Puff",   price:50, cat:"Peri Peri", emoji:"🥜", stock:40, popular:false, desc:"Peri peri with groundnut bite" },
+  { id:704, name:"Peri Peri Paneer Puff", price:50, cat:"Peri Peri", emoji:"🟡", stock:35, popular:true,  desc:"Paneer marinated in peri peri" },
+  { id:705, name:"Peri Peri Cheese Puff", price:60, cat:"Peri Peri", emoji:"🧀", stock:30, popular:false, desc:"Cheese with fiery peri peri sauce" },
+  // CHEESY
+  { id:801, name:"Cheese Spread Puff",    price:40, cat:"Cheesy",    emoji:"🧀", stock:55, popular:false, desc:"Smooth cheese spread in golden puff" },
+  { id:802, name:"Cheese Slice Puff",     price:40, cat:"Cheesy",    emoji:"🫓", stock:50, popular:false, desc:"Melted cheese slice in flaky pastry" },
+  { id:803, name:"Malai Puff",            price:40, cat:"Cheesy",    emoji:"🫙", stock:45, popular:false, desc:"Creamy malai richness" },
+  { id:804, name:"Mayonnaise Puff",       price:40, cat:"Cheesy",    emoji:"🤍", stock:45, popular:false, desc:"Creamy mayonnaise filling" },
+  { id:805, name:"Schezwan Malai Puff",   price:50, cat:"Cheesy",    emoji:"🌶️", stock:40, popular:false, desc:"Spicy Schezwan with malai cream" },
+  { id:806, name:"Garlic Malai Puff",     price:50, cat:"Cheesy",    emoji:"🧄", stock:40, popular:true,  desc:"Garlic-infused malai cream puff" },
+  { id:807, name:"Jalapeno Cheese Puff",  price:50, cat:"Cheesy",    emoji:"🌶️", stock:35, popular:true,  desc:"Spicy jalapenos with melted cheese" },
+  { id:808, name:"Schezwan Cheese Puff",  price:50, cat:"Cheesy",    emoji:"🔥", stock:35, popular:false, desc:"Schezwan fire with cheese cooldown" },
+  { id:809, name:"Garlic Cheese Puff",    price:50, cat:"Cheesy",    emoji:"🧄", stock:40, popular:false, desc:"Aromatic garlic meets melted cheese" },
+  { id:810, name:"Special Cheese Puff",   price:60, cat:"Cheesy",    emoji:"⭐", stock:25, popular:true,  desc:"Chef's special cheese blend puff" },
+  // EXOTICS
+  { id:901, name:"Butter Cheese Puff",    price:50, cat:"Exotics",   emoji:"🧈", stock:45, popular:false, desc:"Buttery richness with melted cheese" },
+  { id:902, name:"Garlic Butter Sev Puff",price:50, cat:"Exotics",   emoji:"🧄", stock:40, popular:false, desc:"Garlic butter & crunchy sev trio" },
+  { id:903, name:"Double Cheese Puff",    price:60, cat:"Exotics",   emoji:"🧀", stock:35, popular:true,  desc:"Double the cheese, double the joy!" },
+  { id:904, name:"Schezwan Double Cheese",price:70, cat:"Exotics",   emoji:"🔥", stock:25, popular:true,  desc:"Fiery Schezwan with double cheese" },
+  { id:905, name:"Garlic Double Cheese",  price:70, cat:"Exotics",   emoji:"🧄", stock:25, popular:false, desc:"Garlic aroma with double cheese" },
+  { id:906, name:"Butter Double Cheese",  price:70, cat:"Exotics",   emoji:"🧈", stock:20, popular:false, desc:"Buttery melt with double cheese layers" },
+  { id:907, name:"Sev Sing Double Cheese",price:70, cat:"Exotics",   emoji:"⭐", stock:20, popular:true,  desc:"Ultimate sev sing + double cheese" },
+  // PUNJABI
+  { id:1001,name:"Punjabi Puff",          price:30, cat:"Punjabi",   emoji:"🟠", stock:55, popular:false, desc:"Bold Punjabi masala in golden puff" },
+  { id:1002,name:"Punjabi Sev Puff",      price:40, cat:"Punjabi",   emoji:"🥐", stock:45, popular:false, desc:"Punjabi spice with sev crunch" },
+  { id:1003,name:"Punjabi Paneer Puff",   price:50, cat:"Punjabi",   emoji:"🟡", stock:40, popular:true,  desc:"Paneer in robust Punjabi masala" },
+  { id:1004,name:"Punjabi Cheese Puff",   price:60, cat:"Punjabi",   emoji:"🧀", stock:30, popular:false, desc:"Cheese with Punjabi punch" },
+  // SPECIAL
+  { id:1101,name:"Nadiad Special Puff",   price:80, cat:"Special",   emoji:"👑", stock:20, popular:true,  desc:"Our legendary signature puff – loaded with special stuffing, cheese & secret sauce" },
+];
+
+// ─── Persistence ──────────────────────────────────────────────────
 function useLS(key, def) {
   const [v, sv] = useState(() => {
     try { const s = localStorage.getItem(key); return s ? JSON.parse(s) : def; }
@@ -56,54 +182,89 @@ function useLS(key, def) {
   return [v, set];
 }
 
-// ─── Shared UI ──────────────────────────────────────────────────────────────
-const fillBtn = (c="#E85D04", sm=false) => ({
-  background:`linear-gradient(135deg,${c},${c}cc)`, color:"#fff", border:"none",
-  borderRadius:sm?8:12, padding:sm?"7px 14px":"11px 22px",
-  fontFamily:"'Poppins',sans-serif", fontWeight:700, fontSize:sm?12:14,
-  cursor:"pointer", boxShadow:`0 4px 14px ${c}44`, transition:"all .2s",
+// ─── Shared UI primitives ─────────────────────────────────────────
+const solidBtn = (bg = P.orange, sm = false) => ({
+  background: `linear-gradient(135deg,${bg},${bg}EE)`,
+  color: "#fff", border: "none",
+  borderRadius: sm ? 10 : 14,
+  padding: sm ? "7px 15px" : "12px 24px",
+  fontFamily: "'Nunito',sans-serif", fontWeight: 800,
+  fontSize: sm ? 12 : 14, cursor: "pointer",
+  boxShadow: `0 4px 16px ${bg}50`,
+  transition: "all .2s", letterSpacing: ".15px",
 });
-const outBtn = (c="#E85D04") => ({
-  background:"transparent", color:c, border:`2px solid ${c}`, borderRadius:12,
-  padding:"9px 18px", fontFamily:"'Poppins',sans-serif", fontWeight:700, fontSize:13, cursor:"pointer",
+const outlineBtn = (c = P.orange) => ({
+  background: "transparent", color: c,
+  border: `2px solid ${c}55`, borderRadius: 12,
+  padding: "9px 18px", fontFamily: "'Nunito',sans-serif",
+  fontWeight: 800, fontSize: 13, cursor: "pointer", transition: "all .2s",
 });
-const inp = {
-  border:"2px solid #FFE0C8", borderRadius:10, padding:"10px 14px",
-  fontFamily:"'Poppins',sans-serif", fontSize:14, background:"#FFF8F0", color:"#2C1810", width:"100%",
+const lightInp = {
+  border: `1.5px solid ${P.border}`, borderRadius: 12,
+  padding: "11px 16px", fontFamily: "'Nunito',sans-serif",
+  fontSize: 14, background: P.surface, color: P.text,
+  width: "100%", transition: "border-color .2s",
 };
-const cardStyle = {
-  background:"#fff", borderRadius:18, padding:"18px",
-  boxShadow:"0 2px 16px rgba(44,24,16,.08)", marginBottom:16,
+const darkInp = {
+  border: "1.5px solid rgba(255,255,255,.15)", borderRadius: 12,
+  padding: "11px 16px", fontFamily: "'Nunito',sans-serif",
+  fontSize: 14, background: "rgba(255,255,255,.10)", color: "#fff",
+  width: "100%", transition: "border-color .2s",
 };
-const bdg = (c) => ({
-  background:c+"22", color:c, borderRadius:20, padding:"3px 11px",
-  fontSize:11, fontWeight:700, fontFamily:"'Poppins',sans-serif",
-});
+const surfaceCard = {
+  background: P.surface,
+  borderRadius: 20,
+  border: `1px solid ${P.border}`,
+  padding: "18px",
+  marginBottom: 14,
+  boxShadow: "0 2px 16px rgba(160,70,20,.07)",
+};
 
-function Toast({ msg, type="success", onClose }) {
-  useEffect(() => { const t = setTimeout(onClose, 2800); return () => clearTimeout(t); }, []);
-  const bg = { success:"#2D6A4F", error:"#9E2A2B", info:"#457B9D" }[type];
+// ─── Toast ────────────────────────────────────────────────────────
+function Toast({ msg, type = "success", onClose }) {
+  useEffect(() => { const t = setTimeout(onClose, 2600); return () => clearTimeout(t); }, []);
+  const cfg = {
+    success: { bg: P.green,  icon: "✅" },
+    error:   { bg: P.red,    icon: "❌" },
+    info:    { bg: P.blue,   icon: "ℹ️" },
+  }[type] || { bg: P.green, icon: "✅" };
   return (
-    <div className="slideup" style={{ position:"fixed", bottom:24, left:"50%", transform:"translateX(-50%)",
-      background:bg, color:"#fff", padding:"12px 24px", borderRadius:30, fontWeight:700,
-      fontSize:14, zIndex:9999, boxShadow:`0 6px 24px ${bg}55`, whiteSpace:"nowrap",
-      fontFamily:"'Poppins',sans-serif" }}>
-      {type==="success"?"✅ ":type==="error"?"❌ ":"ℹ️ "}{msg}
+    <div style={{
+      position: "fixed", bottom: 26, left: "50%",
+      animation: "toastIn .4s cubic-bezier(.34,1.56,.64,1) both",
+      background: cfg.bg, color: "#fff",
+      padding: "13px 26px", borderRadius: 40,
+      fontWeight: 800, fontSize: 14, zIndex: 9999,
+      boxShadow: `0 8px 28px ${cfg.bg}55`,
+      whiteSpace: "nowrap", fontFamily: "'Nunito',sans-serif",
+      transform: "translateX(-50%)",
+    }}>
+      {cfg.icon} {msg}
     </div>
   );
 }
 
+// ─── Confirm Modal ────────────────────────────────────────────────
 function ConfirmModal({ msg, onYes, onNo }) {
   return (
-    <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.5)", zIndex:9000,
-      display:"flex", alignItems:"center", justifyContent:"center" }}>
-      <div className="pop" style={{ background:"#fff", borderRadius:20, padding:"28px 32px",
-        maxWidth:320, width:"90%", textAlign:"center" }}>
-        <div style={{ fontSize:40, marginBottom:12 }}>⚠️</div>
-        <div style={{ fontFamily:"'Poppins',sans-serif", fontWeight:600, marginBottom:20, color:"#2C1810" }}>{msg}</div>
-        <div style={{ display:"flex", gap:10, justifyContent:"center" }}>
-          <button onClick={onNo}  style={outBtn("#BBA99A")}>Cancel</button>
-          <button onClick={onYes} style={fillBtn("#E63946")}>Yes, Proceed</button>
+    <div style={{
+      position: "fixed", inset: 0,
+      background: "rgba(30,10,2,.35)", zIndex: 9000,
+      display: "flex", alignItems: "center", justifyContent: "center",
+      backdropFilter: "blur(6px)",
+    }}>
+      <div className="pop" style={{
+        background: P.surface, borderRadius: 24,
+        border: `1px solid ${P.border}`,
+        padding: "30px 28px", maxWidth: 320, width: "90%", textAlign: "center",
+        boxShadow: "0 20px 60px rgba(160,70,20,.18)",
+      }}>
+        <div style={{ fontSize: 44, marginBottom: 12 }}>⚠️</div>
+        <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 15,
+          color: P.text, marginBottom: 22, lineHeight: 1.6 }}>{msg}</div>
+        <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
+          <button onClick={onNo}  style={outlineBtn("#A07050")}>Cancel</button>
+          <button onClick={onYes} style={solidBtn(P.red)}>Yes, Remove</button>
         </div>
       </div>
     </div>
@@ -114,239 +275,464 @@ function ConfirmModal({ msg, onYes, onNo }) {
 // CUSTOMER APP
 // ══════════════════════════════════════════════════════════════════
 function CustomerApp({ menu, onPlaceOrder }) {
-  const [cat,      setCat]      = useState("All");
-  const [cart,     setCart]     = useState([]);
-  const [step,     setStep]     = useState("menu");
-  const [name,     setName]     = useState("");
-  const [phone,    setPhone]    = useState("");
-  const [payMode,  setPayMode]  = useState("UPI");
-  const [txnId,    setTxnId]    = useState("");
-  const [toast,    setToast]    = useState(null);
-  const [orderId,  setOrderId]  = useState(null);
+  const [cat,     setCat]     = useState("All");
+  const [cart,    setCart]    = useState([]);
+  const [step,    setStep]    = useState("menu");
+  const [search,  setSearch]  = useState("");
+  const [name,    setName]    = useState("");
+  const [phone,   setPhone]   = useState("");
+  const [payMode, setPayMode] = useState("UPI");
+  const [txnId,   setTxnId]   = useState("");
+  const [toast,   setToast]   = useState(null);
+  const [orderId, setOrderId] = useState(null);
 
-  const filtered = cat === "All" ? menu : menu.filter(i => i.cat === cat);
-  const total    = cart.reduce((s, i) => s + i.price * i.qty, 0);
-  const count    = cart.reduce((s, i) => s + i.qty, 0);
+  const filtered = menu.filter(i =>
+    (cat === "All" || i.cat === cat) &&
+    (search === "" || i.name.toLowerCase().includes(search.toLowerCase()))
+  );
+  const total = cart.reduce((s, i) => s + i.price * i.qty, 0);
+  const count = cart.reduce((s, i) => s + i.qty, 0);
 
   const addToCart = (item) => {
-    if (item.stock <= 0) { setToast({ msg:"Out of stock!", type:"error" }); return; }
+    if (item.stock <= 0) { setToast({ msg: "Out of stock!", type: "error" }); return; }
     setCart(c => {
       const ex = c.find(x => x.id === item.id);
-      return ex ? c.map(x => x.id===item.id ? {...x,qty:x.qty+1} : x) : [...c, {...item, qty:1}];
+      return ex ? c.map(x => x.id === item.id ? { ...x, qty: x.qty + 1 } : x) : [...c, { ...item, qty: 1 }];
     });
   };
-  const setQty = (id, d) => setCart(c => c.map(i => i.id===id ? {...i,qty:Math.max(0,i.qty+d)} : i).filter(i=>i.qty>0));
+  const setQty = (id, d) => setCart(c =>
+    c.map(i => i.id === id ? { ...i, qty: Math.max(0, i.qty + d) } : i).filter(i => i.qty > 0)
+  );
 
   const placeOrder = () => {
-    if (!name.trim()) { setToast({ msg:"Please enter your name", type:"error" }); return; }
-    if (payMode === "UPI" && !txnId.trim()) { setToast({ msg:"Enter UPI Transaction ID", type:"error" }); return; }
+    if (!name.trim()) { setToast({ msg: "Enter your name!", type: "error" }); return; }
+    if (payMode === "UPI" && !txnId.trim()) { setToast({ msg: "Enter UPI Transaction ID", type: "error" }); return; }
     const oid = Date.now();
     onPlaceOrder({
       id: oid, items: cart, total, customerName: name, customerPhone: phone,
       payMode, txnId, status: "Pending", orderType: "QR Order",
-      time: new Date().toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit"}),
+      time: new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }),
       date: new Date().toLocaleDateString("en-IN"),
     });
-    setOrderId(oid);
-    setCart([]); setName(""); setPhone(""); setTxnId("");
+    setOrderId(oid); setCart([]); setName(""); setPhone(""); setTxnId("");
     setStep("confirm");
   };
 
+  // ── Order Confirmed ────────────────────────────────────────────
   if (step === "confirm") return (
-    <div style={{ fontFamily:"'Poppins',sans-serif", minHeight:"100vh", background:"#FFF8F0",
-      display:"flex", alignItems:"center", justifyContent:"center", padding:20 }}>
-      <div className="pop" style={{ textAlign:"center", maxWidth:360 }}>
-        <div style={{ fontSize:80, marginBottom:12 }}>🎉</div>
-        <div style={{ fontFamily:"'Baloo 2',cursive", fontWeight:900, fontSize:28, color:"#2D6A4F", marginBottom:10 }}>
-          Order Placed!
+    <div style={{
+      minHeight: "100vh", background: `linear-gradient(160deg,${P.bgAlt},${P.bg})`,
+      display: "flex", alignItems: "center", justifyContent: "center",
+      padding: 28, fontFamily: "'Nunito',sans-serif",
+    }}>
+      <div className="pop" style={{ textAlign: "center", maxWidth: 360, width: "100%" }}>
+        <div style={{ fontSize: 90, marginBottom: 6, animation: "float 3s ease-in-out infinite" }}>🎉</div>
+        <div style={{
+          fontFamily: "'Sora',sans-serif", fontWeight: 900, fontSize: 30,
+          color: P.orange, marginBottom: 8, letterSpacing: "-.4px",
+        }}>Order Confirmed!</div>
+        <div style={{ fontSize: 15, color: P.textMid, lineHeight: 1.7, marginBottom: 22 }}>
+          Order <strong style={{ color: P.orange }}>#{String(orderId).slice(-4)}</strong> received!<br />
+          Your fresh puffs are being prepared 🥐
         </div>
-        <div style={{ fontSize:14, color:"#6B4C3B", marginBottom:20, lineHeight:1.7 }}>
-          Your order <strong style={{color:"#E85D04"}}>#{String(orderId).slice(-4)}</strong> is received!
-          We are preparing your fresh puffs 🥐 Please wait at the counter.
+        <div style={{
+          background: P.greenL, borderRadius: 16, padding: "14px 20px",
+          marginBottom: 28, border: `1px solid ${P.green}30`,
+          fontSize: 13, color: P.green, fontWeight: 700,
+        }}>
+          🌿 100% Pure Veg · Fresh Amul Products · Nadiad Special
         </div>
-        <div style={{ background:"#FFF0E6", borderRadius:14, padding:"12px 18px", marginBottom:22,
-          border:"2px dashed #E85D04", fontSize:13, color:"#6B4C3B" }}>
-          🌿 <strong>100% Pure Veg</strong> · Fresh & Hygienic · Nadiad Special
-        </div>
-        <button onClick={()=>setStep("menu")} style={{ ...fillBtn(), width:"100%" }}>🛒 Order More</button>
+        <button onClick={() => setStep("menu")}
+          style={{ ...solidBtn(), width: "100%", padding: 14, fontSize: 16, borderRadius: 18 }}>
+          🛒 Order More Puffs
+        </button>
       </div>
     </div>
   );
 
   return (
-    <div style={{ fontFamily:"'Poppins',sans-serif", minHeight:"100vh", background:"#FFF8F0" }}>
-      {toast && <Toast {...toast} onClose={()=>setToast(null)} />}
+    <div style={{ fontFamily: "'Nunito',sans-serif", minHeight: "100vh", background: P.bg }}>
+      {toast && <Toast {...toast} onClose={() => setToast(null)} />}
 
-      {/* Header */}
-      <div style={{ background:"linear-gradient(135deg,#E85D04 0%,#F48C06 100%)",
-        padding:"16px 20px 18px", position:"sticky", top:0, zIndex:100,
-        boxShadow:"0 4px 20px rgba(232,93,4,.3)" }}>
-        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+      {/* ── HEADER ──────────────────────────────────────────────── */}
+      <div style={{
+        background: `linear-gradient(135deg,#9A3500 0%,${P.orange} 40%,${P.orangeL} 100%)`,
+        padding: "18px 20px 22px",
+        position: "sticky", top: 0, zIndex: 100,
+        boxShadow: "0 4px 24px rgba(180,70,10,.22)",
+      }}>
+        <div style={{ maxWidth: 640, margin: "0 auto", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div>
-            <div style={{ fontFamily:"'Baloo 2',cursive", fontWeight:900, fontSize:22, color:"#fff", lineHeight:1.1 }}>
-              🥐 Nadiad Special Puff
+            <div style={{
+              fontFamily: "'Sora',sans-serif", fontWeight: 900, fontSize: 21, color: "#fff",
+              letterSpacing: "-.3px", display: "flex", alignItems: "center", gap: 8,
+            }}>
+              <span style={{ fontSize: 26, display: "inline-block", animation: "wiggle 3.5s ease-in-out infinite" }}>🥐</span>
+              Nadiad Special Puff
             </div>
-            <div style={{ display:"flex", gap:8, marginTop:5, alignItems:"center" }}>
-              <span style={{ background:"#2D6A4F", color:"#fff", borderRadius:20, padding:"2px 10px",
-                fontSize:10, fontWeight:700 }}>🌿 100% Pure Veg</span>
-              <span style={{ fontSize:11, color:"rgba(255,255,255,.8)" }}>Nadiad, Gujarat</span>
+            <div style={{ display: "flex", gap: 7, marginTop: 7, flexWrap: "wrap" }}>
+              <span style={{
+                background: "rgba(255,255,255,.22)", color: "#fff",
+                borderRadius: 20, padding: "3px 11px", fontSize: 10, fontWeight: 800, letterSpacing: ".3px",
+              }}>🌿 PURE VEG</span>
+              <span style={{
+                background: "rgba(255,255,255,.18)", color: "rgba(255,255,255,.9)",
+                borderRadius: 20, padding: "3px 11px", fontSize: 10, fontWeight: 700,
+              }}>📍 Nadiad, Gujarat</span>
+              <span style={{
+                background: "rgba(255,255,255,.18)", color: "rgba(255,255,255,.9)",
+                borderRadius: 20, padding: "3px 11px", fontSize: 10, fontWeight: 700,
+              }}>🧀 Only Amul Products</span>
             </div>
           </div>
           {count > 0 && (
-            <button onClick={()=>setStep("cart")} style={{ background:"#fff", border:"none", borderRadius:12,
-              padding:"10px 16px", fontWeight:800, fontSize:14, color:"#E85D04", cursor:"pointer",
-              boxShadow:"0 4px 14px rgba(0,0,0,.15)", position:"relative", fontFamily:"'Poppins',sans-serif" }}>
+            <button onClick={() => setStep("cart")} style={{
+              background: "#fff", border: "none", borderRadius: 14,
+              padding: "11px 18px", fontWeight: 900, fontSize: 14,
+              color: P.orange, cursor: "pointer", position: "relative",
+              boxShadow: "0 6px 20px rgba(0,0,0,.15)",
+              fontFamily: "'Sora',sans-serif",
+              animation: "pulse 2.2s ease-in-out infinite",
+            }}>
               🛒 ₹{total}
-              <span style={{ position:"absolute", top:-8, right:-8, background:"#E63946", color:"#fff",
-                borderRadius:"50%", width:22, height:22, fontSize:11, fontWeight:800,
-                display:"flex", alignItems:"center", justifyContent:"center" }}>{count}</span>
+              <span style={{
+                position: "absolute", top: -9, right: -9,
+                background: P.red, color: "#fff", borderRadius: "50%",
+                width: 24, height: 24, fontSize: 11, fontWeight: 900,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                boxShadow: `0 3px 10px ${P.red}55`,
+              }}>{count}</span>
             </button>
           )}
         </div>
       </div>
 
+      {/* ── MENU ────────────────────────────────────────────────── */}
       {step === "menu" && (
-        <div style={{ padding:"16px", maxWidth:600, margin:"0 auto" }}>
-          <div style={{ display:"flex", gap:8, overflowX:"auto", paddingBottom:4, marginBottom:16 }}>
-            {CATS.map(c => (
-              <button key={c} onClick={()=>setCat(c)} style={{ flex:"0 0 auto", padding:"8px 18px",
-                borderRadius:20, border:"2px solid",
-                borderColor:cat===c?"#E85D04":"#FFD7C4", background:cat===c?"#E85D04":"#fff",
-                color:cat===c?"#fff":"#6B4C3B", fontWeight:700, fontSize:13,
-                cursor:"pointer", transition:"all .15s", fontFamily:"'Poppins',sans-serif" }}>{c}</button>
-            ))}
+        <div style={{ maxWidth: 640, margin: "0 auto", padding: "16px" }}>
+
+          {/* Search */}
+          <div style={{ position: "relative", marginBottom: 14 }}>
+            <span style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", fontSize: 16 }}>🔍</span>
+            <input
+              style={{ ...lightInp, paddingLeft: 44, borderRadius: 30, fontSize: 14 }}
+              placeholder="Search puffs… cheese, paneer, garlic…"
+              value={search} onChange={e => setSearch(e.target.value)}
+            />
+            {search && (
+              <button onClick={() => setSearch("")} style={{
+                position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)",
+                background: "none", border: "none", color: P.textFaint, cursor: "pointer", fontSize: 20, lineHeight: 1,
+              }}>×</button>
+            )}
           </div>
 
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
-            {filtered.map((item, i) => (
-              <div key={item.id} className="fadein" style={{ animationDelay:`${i*.04}s`,
-                background:"#fff", borderRadius:16, overflow:"hidden",
-                boxShadow:"0 2px 12px rgba(44,24,16,.1)",
-                border:`2px solid ${item.stock===0?"#FFB3B3":"#FFF0E6"}`,
-                opacity:item.stock===0?.55:1 }}>
-                <div style={{ background:"linear-gradient(135deg,#FFF0E6,#FFE0C8)",
-                  padding:"16px 0", fontSize:40, textAlign:"center" }}>{item.emoji}</div>
-                <div style={{ padding:"12px" }}>
-                  <div style={{ fontWeight:700, fontSize:13, marginBottom:2 }}>{item.name}</div>
-                  <div style={{ fontSize:11, color:"#BBA99A", marginBottom:10, lineHeight:1.4 }}>{item.desc}</div>
-                  <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-                    <span style={{ fontFamily:"'Baloo 2',cursive", fontWeight:800, fontSize:17, color:"#E85D04" }}>₹{item.price}</span>
-                    {item.stock === 0 ? (
-                      <span style={bdg("#E63946")}>Out of Stock</span>
-                    ) : cart.find(c=>c.id===item.id) ? (
-                      <div style={{ display:"flex", alignItems:"center", gap:5 }}>
-                        <button onClick={()=>setQty(item.id,-1)} style={{ width:28,height:28,borderRadius:7,border:"2px solid #FFE0C8",background:"#fff",color:"#E85D04",fontWeight:800,fontSize:15,cursor:"pointer" }}>−</button>
-                        <span style={{ fontWeight:800, minWidth:20, textAlign:"center", fontSize:14 }}>{cart.find(c=>c.id===item.id).qty}</span>
-                        <button onClick={()=>addToCart(item)} style={{ width:28,height:28,borderRadius:7,border:"none",background:"#E85D04",color:"#fff",fontWeight:800,fontSize:15,cursor:"pointer" }}>+</button>
-                      </div>
-                    ) : (
-                      <button onClick={()=>addToCart(item)} style={{ ...fillBtn("#E85D04",true), padding:"6px 14px" }}>+ Add</button>
-                    )}
+          {/* Category Pills */}
+          {!search && (
+            <div className="no-scroll" style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 6, marginBottom: 16 }}>
+              {CATS.map(c => {
+                const cfg = CAT_CFG[c];
+                const active = cat === c;
+                return (
+                  <button key={c} onClick={() => setCat(c)} style={{
+                    flex: "0 0 auto", padding: "8px 16px", borderRadius: 24,
+                    border: `1.5px solid ${active ? cfg.color : P.border}`,
+                    background: active ? cfg.bg : P.surface,
+                    color: active ? cfg.color : P.textSoft,
+                    fontWeight: 800, fontSize: 12, cursor: "pointer",
+                    transition: "all .2s", fontFamily: "'Nunito',sans-serif",
+                    boxShadow: active ? `0 3px 12px ${cfg.color}25` : "none",
+                    whiteSpace: "nowrap",
+                  }}>
+                    {cfg.icon} {c}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Section header */}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+            <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 800, fontSize: 17, color: P.text }}>
+              {search ? `Results for "${search}"` : cat === "All" ? "All Puffs 🥐" : `${CAT_CFG[cat].icon} ${cat}`}
+            </div>
+            <div style={{ fontSize: 12, color: P.textFaint, fontWeight: 700 }}>{filtered.length} items</div>
+          </div>
+
+          {/* Grid */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            {filtered.map((item, i) => {
+              const cfg = CAT_CFG[item.cat] || CAT_CFG.Regular;
+              const inCart = cart.find(c => c.id === item.id);
+              return (
+                <div key={item.id} className="fadeup card-lift"
+                  style={{
+                    animationDelay: `${i * .032}s`,
+                    background: P.surface, borderRadius: 18, overflow: "hidden",
+                    border: `1.5px solid ${item.stock === 0 ? "#F0C0C0" : item.popular ? cfg.color + "50" : P.border}`,
+                    opacity: item.stock === 0 ? .55 : 1,
+                    boxShadow: item.popular
+                      ? `0 4px 20px ${cfg.color}20`
+                      : "0 2px 14px rgba(160,70,20,.07)",
+                    position: "relative",
+                  }}>
+
+                  {/* Popular badge */}
+                  {item.popular && item.stock > 0 && (
+                    <div className="hit-badge" style={{
+                      position: "absolute", top: 8, right: 8, zIndex: 2,
+                      background: `linear-gradient(135deg,${cfg.color},${P.amber})`,
+                      color: "#fff", fontSize: 9, fontWeight: 900,
+                      padding: "3px 9px", borderRadius: 10,
+                      boxShadow: `0 3px 10px ${cfg.color}45`,
+                      letterSpacing: ".5px",
+                    }}>⭐ HIT</div>
+                  )}
+                  {item.cat === "Special" && (
+                    <div style={{
+                      position: "absolute", top: 8, left: 8, zIndex: 2,
+                      background: "linear-gradient(135deg,#9A6800,#D4A010)",
+                      color: "#fff", fontSize: 9, fontWeight: 900,
+                      padding: "3px 9px", borderRadius: 10,
+                    }}>★ SIGNATURE</div>
+                  )}
+
+                  {/* Emoji zone */}
+                  <div style={{
+                    background: `linear-gradient(160deg,${cfg.bg},${cfg.bg}BB)`,
+                    padding: "18px 0 14px", textAlign: "center",
+                    borderBottom: `1px solid ${cfg.color}18`,
+                  }}>
+                    <div style={{ fontSize: 38, filter: "drop-shadow(0 2px 6px rgba(160,70,20,.15))" }}>
+                      {item.emoji}
+                    </div>
+                  </div>
+
+                  {/* Info */}
+                  <div style={{ padding: "12px 12px 14px" }}>
+                    <div style={{
+                      fontFamily: "'Sora',sans-serif", fontWeight: 800,
+                      fontSize: 12.5, color: P.text, marginBottom: 4, lineHeight: 1.3,
+                    }}>{item.name}</div>
+                    <div style={{
+                      fontSize: 10.5, color: P.textSoft, marginBottom: 10,
+                      lineHeight: 1.45, minHeight: 28,
+                    }}>{item.desc}</div>
+
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <div style={{
+                        fontFamily: "'Sora',sans-serif", fontWeight: 900,
+                        fontSize: 19, color: cfg.color, letterSpacing: "-.3px",
+                      }}>₹{item.price}</div>
+
+                      {item.stock === 0 ? (
+                        <span style={{
+                          background: P.redL, color: P.red,
+                          borderRadius: 8, padding: "4px 8px", fontSize: 10, fontWeight: 800,
+                        }}>SOLD OUT</span>
+                      ) : inCart ? (
+                        <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                          <button onClick={() => setQty(item.id, -1)} style={{
+                            width: 28, height: 28, borderRadius: 8,
+                            border: `1.5px solid ${cfg.color}44`,
+                            background: cfg.bg, color: cfg.color,
+                            fontWeight: 900, fontSize: 16, cursor: "pointer", lineHeight: 1,
+                          }}>−</button>
+                          <span style={{ fontWeight: 900, minWidth: 20, textAlign: "center", fontSize: 14, color: P.text }}>{inCart.qty}</span>
+                          <button onClick={() => addToCart(item)} style={{
+                            width: 28, height: 28, borderRadius: 8, border: "none",
+                            background: cfg.color, color: "#fff",
+                            fontWeight: 900, fontSize: 16, cursor: "pointer", lineHeight: 1,
+                            boxShadow: `0 3px 10px ${cfg.color}44`,
+                          }}>+</button>
+                        </div>
+                      ) : (
+                        <button onClick={() => addToCart(item)} style={{
+                          ...solidBtn(cfg.color, true), padding: "6px 14px",
+                          fontSize: 11, borderRadius: 10,
+                        }}>+ Add</button>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
+          {filtered.length === 0 && (
+            <div style={{ textAlign: "center", padding: "60px 20px", color: P.textFaint }}>
+              <div style={{ fontSize: 48, marginBottom: 12 }}>🔍</div>
+              <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 16, color: P.textSoft }}>No puffs found</div>
+              <div style={{ fontSize: 13, marginTop: 6 }}>Try a different search or category</div>
+            </div>
+          )}
+
           {count > 0 && (
-            <div style={{ position:"sticky", bottom:16, marginTop:16 }}>
-              <button onClick={()=>setStep("cart")} style={{ ...fillBtn(), width:"100%", padding:"14px", fontSize:15 }}>
-                🛒 View Cart ({count} items) · ₹{total}
+            <div style={{ position: "sticky", bottom: 16, marginTop: 20 }}>
+              <button onClick={() => setStep("cart")} style={{
+                ...solidBtn(), width: "100%", padding: "15px 20px", fontSize: 15,
+                borderRadius: 18, letterSpacing: ".2px",
+                background: `linear-gradient(135deg,#9A3500,${P.orange},${P.orangeL})`,
+                boxShadow: `0 6px 24px ${P.orange}55`,
+              }}>
+                🛒 View Cart ({count} items) — ₹{total}
               </button>
             </div>
           )}
         </div>
       )}
 
+      {/* ── CART ────────────────────────────────────────────────── */}
       {step === "cart" && (
-        <div style={{ padding:"16px", maxWidth:500, margin:"0 auto" }}>
-          <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:16 }}>
-            <button onClick={()=>setStep("menu")} style={{ background:"#FFE0C8",border:"none",borderRadius:10,padding:"8px 14px",fontWeight:700,fontSize:13,cursor:"pointer",color:"#E85D04",fontFamily:"'Poppins',sans-serif" }}>← Menu</button>
-            <h2 style={{ margin:0, fontFamily:"'Baloo 2',cursive", fontWeight:800, fontSize:20 }}>Your Cart</h2>
+        <div style={{ maxWidth: 520, margin: "0 auto", padding: "16px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
+            <button onClick={() => setStep("menu")} style={{
+              background: P.orangeXL, border: "none", borderRadius: 10,
+              padding: "8px 14px", fontWeight: 800, fontSize: 12,
+              cursor: "pointer", color: P.orange,
+            }}>← Menu</button>
+            <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 900, fontSize: 22, color: P.text }}>Your Cart 🛒</div>
           </div>
-          <div style={cardStyle}>
-            {cart.map(item => (
-              <div key={item.id} style={{ display:"flex",alignItems:"center",gap:10,padding:"10px 0",borderBottom:"1px dashed #FFE0C8" }}>
-                <span style={{ fontSize:22 }}>{item.emoji}</span>
-                <div style={{ flex:1 }}>
-                  <div style={{ fontWeight:700, fontSize:14 }}>{item.name}</div>
-                  <div style={{ color:"#E85D04", fontWeight:700, fontSize:13 }}>₹{item.price} × {item.qty} = ₹{item.price*item.qty}</div>
+
+          <div style={surfaceCard}>
+            {cart.map(item => {
+              const cfg = CAT_CFG[item.cat] || CAT_CFG.Regular;
+              return (
+                <div key={item.id} style={{
+                  display: "flex", alignItems: "center", gap: 12,
+                  padding: "12px 0", borderBottom: `1px solid ${P.border}`,
+                }}>
+                  <div style={{
+                    width: 44, height: 44, background: cfg.bg,
+                    borderRadius: 12, display: "flex", alignItems: "center",
+                    justifyContent: "center", fontSize: 22, border: `1px solid ${cfg.color}20`,
+                  }}>{item.emoji}</div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 800, fontSize: 13, color: P.text }}>{item.name}</div>
+                    <div style={{ color: cfg.color, fontWeight: 800, fontSize: 12, marginTop: 2 }}>
+                      ₹{item.price} × {item.qty} = <span style={{ color: P.orange }}>₹{item.price * item.qty}</span>
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <button onClick={() => setQty(item.id, -1)} style={{
+                      width: 30, height: 30, borderRadius: 8,
+                      border: `1.5px solid ${P.border}`, background: P.bgAlt,
+                      color: P.orange, fontWeight: 900, cursor: "pointer", fontSize: 16, lineHeight: 1,
+                    }}>−</button>
+                    <span style={{ fontWeight: 900, minWidth: 22, textAlign: "center", color: P.text, fontSize: 14 }}>{item.qty}</span>
+                    <button onClick={() => addToCart(item)} style={{
+                      width: 30, height: 30, borderRadius: 8, border: "none",
+                      background: P.orange, color: "#fff", fontWeight: 900, cursor: "pointer", fontSize: 16, lineHeight: 1,
+                    }}>+</button>
+                  </div>
                 </div>
-                <div style={{ display:"flex",alignItems:"center",gap:6 }}>
-                  <button onClick={()=>setQty(item.id,-1)} style={{ width:30,height:30,borderRadius:8,border:"2px solid #FFE0C8",background:"#fff",color:"#E85D04",fontWeight:800,cursor:"pointer" }}>−</button>
-                  <span style={{ fontWeight:800, minWidth:22, textAlign:"center" }}>{item.qty}</span>
-                  <button onClick={()=>addToCart(item)} style={{ width:30,height:30,borderRadius:8,border:"none",background:"#E85D04",color:"#fff",fontWeight:800,cursor:"pointer" }}>+</button>
-                </div>
-              </div>
-            ))}
-            <div style={{ display:"flex",justifyContent:"space-between",paddingTop:14,fontFamily:"'Baloo 2',cursive",fontWeight:800,fontSize:22 }}>
-              <span>Total</span><span style={{ color:"#E85D04" }}>₹{total}</span>
+              );
+            })}
+            <div style={{ display: "flex", justifyContent: "space-between", paddingTop: 14 }}>
+              <span style={{ fontFamily: "'Sora',sans-serif", fontWeight: 900, fontSize: 20, color: P.textMid }}>Total</span>
+              <span style={{ fontFamily: "'Sora',sans-serif", fontWeight: 900, fontSize: 22, color: P.orange }}>₹{total}</span>
             </div>
           </div>
-          <div style={cardStyle}>
-            <div style={{ fontWeight:700, marginBottom:10 }}>Your Details</div>
-            <input style={{ ...inp, marginBottom:10 }} placeholder="Your Name *" value={name} onChange={e=>setName(e.target.value)} />
-            <input style={inp} placeholder="WhatsApp Number (for order updates)" value={phone} onChange={e=>setPhone(e.target.value)} type="tel" />
+
+          <div style={surfaceCard}>
+            <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 800, fontSize: 14, color: P.text, marginBottom: 14 }}>Your Details</div>
+            <input style={{ ...lightInp, marginBottom: 10 }} placeholder="Your Name *" value={name} onChange={e => setName(e.target.value)} />
+            <input style={lightInp} placeholder="Phone Number (optional)" value={phone} onChange={e => setPhone(e.target.value)} type="tel" />
           </div>
-          <button onClick={()=>setStep("payment")} style={{ ...fillBtn(), width:"100%", padding:14, fontSize:15 }}>
+          <button onClick={() => setStep("payment")} style={{ ...solidBtn(), width: "100%", padding: 14, fontSize: 15, borderRadius: 18 }}>
             Proceed to Payment →
           </button>
         </div>
       )}
 
+      {/* ── PAYMENT ─────────────────────────────────────────────── */}
       {step === "payment" && (
-        <div style={{ padding:"16px", maxWidth:500, margin:"0 auto" }}>
-          <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:16 }}>
-            <button onClick={()=>setStep("cart")} style={{ background:"#FFE0C8",border:"none",borderRadius:10,padding:"8px 14px",fontWeight:700,fontSize:13,cursor:"pointer",color:"#E85D04",fontFamily:"'Poppins',sans-serif" }}>← Cart</button>
-            <h2 style={{ margin:0, fontFamily:"'Baloo 2',cursive", fontWeight:800, fontSize:20 }}>Payment</h2>
+        <div style={{ maxWidth: 520, margin: "0 auto", padding: "16px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
+            <button onClick={() => setStep("cart")} style={{
+              background: P.orangeXL, border: "none", borderRadius: 10,
+              padding: "8px 14px", fontWeight: 800, fontSize: 12, cursor: "pointer", color: P.orange,
+            }}>← Cart</button>
+            <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 900, fontSize: 22, color: P.text }}>Payment 💳</div>
           </div>
-          <div style={{ ...cardStyle, textAlign:"center" }}>
-            <div style={{ fontFamily:"'Baloo 2',cursive", fontWeight:900, fontSize:38, color:"#E85D04" }}>₹{total}</div>
-            <div style={{ color:"#BBA99A", fontSize:13 }}>Total Amount to Pay</div>
+
+          <div style={{ ...surfaceCard, textAlign: "center" }}>
+            <div style={{
+              fontFamily: "'Sora',sans-serif", fontWeight: 900, fontSize: 44,
+              background: `linear-gradient(135deg,${P.orange},${P.amber})`,
+              WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
+            }}>₹{total}</div>
+            <div style={{ fontSize: 12, color: P.textSoft, marginTop: 3, fontWeight: 700 }}>Total Amount to Pay</div>
           </div>
-          <div style={cardStyle}>
-            <div style={{ fontWeight:700, marginBottom:12 }}>Choose Payment Method</div>
-            <div style={{ display:"flex", gap:10, marginBottom:16 }}>
-              {["UPI","Cash"].map(m => (
-                <button key={m} onClick={()=>setPayMode(m)} style={{ flex:1, padding:"13px",
-                  borderRadius:12, border:`2px solid ${payMode===m?"#E85D04":"#FFE0C8"}`,
-                  background:payMode===m?"#FFF0E6":"#fff", fontWeight:700, fontSize:14,
-                  cursor:"pointer", color:payMode===m?"#E85D04":"#6B4C3B",
-                  fontFamily:"'Poppins',sans-serif" }}>
-                  {m==="UPI"?"📱 UPI":"💵 Cash"}
+
+          <div style={surfaceCard}>
+            <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 800, fontSize: 14, color: P.text, marginBottom: 14 }}>Payment Method</div>
+            <div style={{ display: "flex", gap: 10, marginBottom: 18 }}>
+              {["UPI", "Cash"].map(m => (
+                <button key={m} onClick={() => setPayMode(m)} style={{
+                  flex: 1, padding: "14px",
+                  borderRadius: 14,
+                  border: `2px solid ${payMode === m ? P.orange : P.border}`,
+                  background: payMode === m ? P.orangeXL : P.bg,
+                  fontWeight: 800, fontSize: 14, cursor: "pointer",
+                  color: payMode === m ? P.orange : P.textSoft,
+                  fontFamily: "'Nunito',sans-serif", transition: "all .2s",
+                }}>
+                  {m === "UPI" ? "📱 UPI" : "💵 Cash"}
                 </button>
               ))}
             </div>
+
             {payMode === "UPI" && (
-              <div style={{ textAlign:"center" }}>
-                <div style={{ background:"linear-gradient(135deg,#FFF0E6,#FFE0C8)", borderRadius:16, padding:"22px 20px", marginBottom:14 }}>
-                  <div style={{ fontSize:13, fontWeight:600, color:"#6B4C3B", marginBottom:12 }}>Scan & Pay via any UPI App</div>
-                  <div style={{ width:130, height:130, background:"#fff", borderRadius:14, margin:"0 auto 14px",
-                    display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center",
-                    border:"3px solid #E85D04", fontSize:11, color:"#BBA99A", fontWeight:600, lineHeight:1.6 }}>
-                    📱<br/>Your UPI QR<br/>Code Goes Here
+              <div style={{ textAlign: "center" }}>
+                <div style={{
+                  background: P.bgAlt, borderRadius: 18, padding: "22px",
+                  marginBottom: 14, border: `1px solid ${P.border}`,
+                }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: P.textSoft, marginBottom: 14 }}>
+                    Scan & Pay via any UPI App
                   </div>
-                  <div style={{ fontFamily:"'Baloo 2',cursive", fontWeight:800, fontSize:17, color:"#E85D04" }}>
-                    UPI ID: nadiadpuff@upi
+                  <div style={{
+                    width: 140, height: 140, background: "#fff", borderRadius: 16,
+                    margin: "0 auto 16px", display: "flex", flexDirection: "column",
+                    alignItems: "center", justifyContent: "center",
+                    border: `3px solid ${P.orange}`,
+                    fontSize: 11, color: P.textSoft, fontWeight: 700, lineHeight: 1.8,
+                    boxShadow: `0 4px 16px ${P.orange}22`,
+                  }}>
+                    📱<br />UPI QR Code<br />Goes Here
                   </div>
-                  <div style={{ fontSize:11, color:"#BBA99A", marginTop:4 }}>Replace with your actual UPI ID</div>
+                  <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 900, fontSize: 16, color: P.orange }}>
+                    nadiadpuff@upi
+                  </div>
+                  <div style={{ fontSize: 10, color: P.textFaint, marginTop: 4 }}>Replace with your actual UPI ID</div>
                 </div>
-                <input style={{ ...inp, marginBottom:6 }} placeholder="Enter UPI Transaction ID *"
-                  value={txnId} onChange={e=>setTxnId(e.target.value)} />
-                <div style={{ fontSize:11, color:"#BBA99A" }}>Enter the 12-digit transaction ID after payment</div>
+                <input style={{ ...lightInp, marginBottom: 6 }} placeholder="Enter UPI Transaction ID *"
+                  value={txnId} onChange={e => setTxnId(e.target.value)} />
+                <div style={{ fontSize: 11, color: P.textFaint, textAlign: "left", marginLeft: 4 }}>
+                  Enter the 12-digit transaction ID after payment
+                </div>
               </div>
             )}
+
             {payMode === "Cash" && (
-              <div style={{ background:"#F0FFF4", borderRadius:14, padding:"18px", textAlign:"center", border:"2px solid #2D6A4F33" }}>
-                <div style={{ fontSize:36, marginBottom:8 }}>💵</div>
-                <div style={{ fontWeight:700, color:"#2D6A4F", fontSize:16 }}>Pay ₹{total} at Counter</div>
-                <div style={{ fontSize:12, color:"#6B8A74", marginTop:6, lineHeight:1.5 }}>
-                  Your order will be confirmed when you pay at the counter. Please show this screen.
+              <div style={{
+                background: P.greenL, borderRadius: 14, padding: "20px",
+                textAlign: "center", border: `1px solid ${P.green}30`,
+              }}>
+                <div style={{ fontSize: 40, marginBottom: 10 }}>💵</div>
+                <div style={{ fontWeight: 800, color: P.green, fontSize: 16 }}>Pay ₹{total} at Counter</div>
+                <div style={{ fontSize: 12, color: "#4A9A6A", marginTop: 8, lineHeight: 1.6 }}>
+                  Show this screen at the counter to confirm your order
                 </div>
               </div>
             )}
           </div>
-          <button onClick={placeOrder} style={{ ...fillBtn("#2D6A4F"), width:"100%", padding:14, fontSize:15 }}>
+
+          <button onClick={placeOrder} style={{
+            ...solidBtn(P.green), width: "100%", padding: 14, fontSize: 15, borderRadius: 18,
+            background: `linear-gradient(135deg,#1E5C3A,${P.green})`,
+          }}>
             ✅ Confirm & Place Order
           </button>
         </div>
@@ -359,55 +745,63 @@ function CustomerApp({ menu, onPlaceOrder }) {
 // ADMIN LOGIN
 // ══════════════════════════════════════════════════════════════════
 function AdminLogin({ onLogin, onBack }) {
-  const [u, setU] = useState("");
-  const [p, setP] = useState("");
-  const [err, setErr] = useState("");
-  const [show, setShow] = useState(false);
-
+  const [u, setU] = useState(""); const [p, setP] = useState("");
+  const [err, setErr] = useState(""); const [show, setShow] = useState(false);
   const login = () => {
     const found = ADMINS.find(a => a.username === u && a.password === p);
     if (found) onLogin(found);
-    else setErr("Invalid credentials. Access restricted to authorized staff only.");
+    else setErr("Invalid credentials. Staff access only.");
   };
-
   return (
-    <div style={{ fontFamily:"'Poppins',sans-serif", minHeight:"100vh",
-      background:"linear-gradient(135deg,#1A0F09 0%,#2C1810 50%,#1A0F09 100%)",
-      display:"flex", alignItems:"center", justifyContent:"center", padding:20 }}>
-      <div className="pop" style={{ width:"100%", maxWidth:380 }}>
-        <button onClick={onBack} style={{ background:"none",border:"none",color:"rgba(255,248,240,.5)",
-          cursor:"pointer",fontSize:13,marginBottom:20,fontFamily:"'Poppins',sans-serif" }}>← Back to Menu</button>
-        <div style={{ textAlign:"center", marginBottom:28 }}>
-          <div style={{ fontSize:52, marginBottom:8 }}>🔐</div>
-          <div style={{ fontFamily:"'Baloo 2',cursive", fontWeight:900, fontSize:30, color:"#F48C06" }}>Admin Panel</div>
-          <div style={{ color:"rgba(255,248,240,.55)", fontSize:13, marginTop:4 }}>Nadiad Special Puff · Staff Access Only</div>
+    <div style={{
+      fontFamily: "'Nunito',sans-serif", minHeight: "100vh",
+      background: `linear-gradient(160deg,#6A2000,#9A3500,#6A2000)`,
+      display: "flex", alignItems: "center", justifyContent: "center", padding: 24,
+    }}>
+      <div className="pop" style={{ width: "100%", maxWidth: 380 }}>
+        <button onClick={onBack} style={{
+          background: "none", border: "none", color: "rgba(255,255,255,.5)",
+          cursor: "pointer", fontSize: 13, marginBottom: 24,
+          fontFamily: "'Nunito',sans-serif", fontWeight: 700,
+        }}>← Back to Menu</button>
+        <div style={{ textAlign: "center", marginBottom: 28 }}>
+          <div style={{ fontSize: 56, marginBottom: 8 }}>🔐</div>
+          <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 900, fontSize: 30, color: "#FFE8C0" }}>Admin Panel</div>
+          <div style={{ color: "rgba(255,230,180,.5)", fontSize: 13, marginTop: 4 }}>Authorized Staff Only</div>
         </div>
-        <div style={{ background:"rgba(255,255,255,.07)", backdropFilter:"blur(10px)", borderRadius:22,
-          padding:"28px", border:"1px solid rgba(255,255,255,.1)" }}>
-          <div style={{ marginBottom:14 }}>
-            <label style={{ fontSize:12, fontWeight:600, color:"rgba(255,248,240,.7)", display:"block", marginBottom:6 }}>Username</label>
-            <input style={{ ...inp, background:"rgba(255,255,255,.1)", border:"1px solid rgba(255,255,255,.2)", color:"#fff" }}
-              placeholder="Enter username" value={u} onChange={e=>setU(e.target.value)} onKeyDown={e=>e.key==="Enter"&&login()} />
+        <div style={{
+          background: "rgba(255,255,255,.1)", backdropFilter: "blur(14px)",
+          borderRadius: 24, padding: "28px", border: "1px solid rgba(255,255,255,.15)",
+        }}>
+          <div style={{ marginBottom: 14 }}>
+            <label style={{ fontSize: 11, fontWeight: 800, color: "rgba(255,230,180,.65)", display: "block", marginBottom: 7, letterSpacing: "1px", textTransform: "uppercase" }}>Username</label>
+            <input style={darkInp} placeholder="Enter username" value={u}
+              onChange={e => setU(e.target.value)} onKeyDown={e => e.key === "Enter" && login()} />
           </div>
-          <div style={{ marginBottom:20 }}>
-            <label style={{ fontSize:12, fontWeight:600, color:"rgba(255,248,240,.7)", display:"block", marginBottom:6 }}>Password</label>
-            <div style={{ position:"relative" }}>
-              <input style={{ ...inp, background:"rgba(255,255,255,.1)", border:"1px solid rgba(255,255,255,.2)", color:"#fff", paddingRight:46 }}
-                placeholder="Enter password" type={show?"text":"password"} value={p}
-                onChange={e=>setP(e.target.value)} onKeyDown={e=>e.key==="Enter"&&login()} />
-              <button onClick={()=>setShow(s=>!s)} style={{ position:"absolute",right:12,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",cursor:"pointer",fontSize:16 }}>{show?"🙈":"👁️"}</button>
+          <div style={{ marginBottom: 20 }}>
+            <label style={{ fontSize: 11, fontWeight: 800, color: "rgba(255,230,180,.65)", display: "block", marginBottom: 7, letterSpacing: "1px", textTransform: "uppercase" }}>Password</label>
+            <div style={{ position: "relative" }}>
+              <input style={{ ...darkInp, paddingRight: 46 }} placeholder="Enter password"
+                type={show ? "text" : "password"} value={p}
+                onChange={e => setP(e.target.value)} onKeyDown={e => e.key === "Enter" && login()} />
+              <button onClick={() => setShow(s => !s)} style={{
+                position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)",
+                background: "none", border: "none", cursor: "pointer", fontSize: 16,
+              }}>{show ? "🙈" : "👁️"}</button>
             </div>
           </div>
           {err && (
-            <div style={{ background:"rgba(230,57,70,.15)", border:"1px solid rgba(230,57,70,.3)", borderRadius:10,
-              padding:"10px 14px", color:"#FF6B7A", fontSize:12, marginBottom:16 }}>⚠️ {err}</div>
+            <div style={{
+              background: "rgba(200,30,30,.2)", borderRadius: 10,
+              padding: "10px 14px", color: "#FFAAAA", fontSize: 12, marginBottom: 16, fontWeight: 700,
+            }}>⚠️ {err}</div>
           )}
-          <button onClick={login} style={{ ...fillBtn("#E85D04"), width:"100%", padding:13, fontSize:15 }}>
+          <button onClick={login} style={{ ...solidBtn(), width: "100%", padding: 13, fontSize: 15, borderRadius: 14 }}>
             Login to Dashboard
           </button>
         </div>
-        <div style={{ textAlign:"center", marginTop:18, fontSize:11, color:"rgba(255,248,240,.3)" }}>
-          🔒 Only 2 authorized admins. No new registrations allowed.
+        <div style={{ textAlign: "center", marginTop: 16, fontSize: 11, color: "rgba(255,230,180,.25)" }}>
+          🔒 Only authorized admins can login
         </div>
       </div>
     </div>
@@ -420,129 +814,368 @@ function AdminLogin({ onLogin, onBack }) {
 function AdminDashboard({ admin, orders, setOrders, menu, setMenu, onLogout }) {
   const [tab, setTab] = useState("orders");
   const [toast, setToast] = useState(null);
-
-  const TABS = [
-    { id:"orders",    icon:"📋", label:"Orders",    badge: orders.filter(o=>["Pending","Preparing"].includes(o.status)).length },
-    { id:"inventory", icon:"📦", label:"Inventory", badge: menu.filter(i=>i.stock<=10&&i.stock!==999).length },
-    { id:"menu",      icon:"🍽️", label:"Menu" },
-    { id:"reports",   icon:"📊", label:"Reports" },
+  const [confirm, setConfirm] = useState(null);
+  const tabs = [
+    { id: "orders",  label: "Orders",  icon: "📋" },
+    { id: "menu",    label: "Menu",    icon: "🥐" },
+    { id: "reports", label: "Reports", icon: "📊" },
+    { id: "suggest", label: "Ideas",   icon: "💡" },
   ];
-
+  const updateStatus = (id, status) => {
+    setOrders(os => os.map(o => o.id === id ? { ...o, status } : o));
+    setToast({ msg: `Updated to ${status}`, type: "info" });
+  };
   return (
-    <div style={{ fontFamily:"'Poppins',sans-serif", minHeight:"100vh", background:"#F5F0EB" }}>
-      {toast && <Toast {...toast} onClose={()=>setToast(null)} />}
+    <div style={{ fontFamily: "'Nunito',sans-serif", minHeight: "100vh", background: P.bg }}>
+      {toast && <Toast {...toast} onClose={() => setToast(null)} />}
+      {confirm && <ConfirmModal msg={confirm.msg} onYes={confirm.yes} onNo={() => setConfirm(null)} />}
 
-      <div style={{ background:"linear-gradient(135deg,#2C1810,#3D2314)", padding:"12px 20px",
-        display:"flex", justifyContent:"space-between", alignItems:"center",
-        boxShadow:"0 4px 20px rgba(0,0,0,.3)" }}>
+      {/* Admin Header */}
+      <div style={{
+        background: `linear-gradient(135deg,#9A3500,${P.orange})`,
+        padding: "14px 20px",
+        display: "flex", justifyContent: "space-between", alignItems: "center",
+        position: "sticky", top: 0, zIndex: 100,
+        boxShadow: "0 3px 18px rgba(180,70,10,.2)",
+      }}>
         <div>
-          <div style={{ fontFamily:"'Baloo 2',cursive", fontWeight:900, fontSize:22, color:"#F48C06" }}>
-            🥐 NSP Admin Dashboard
+          <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 900, fontSize: 16, color: "#fff" }}>
+            🔐 Admin Dashboard
           </div>
-          <div style={{ fontSize:11, color:"rgba(255,248,240,.55)" }}>
-            Logged in as <strong style={{color:"#F48C06"}}>{admin.name}</strong> · {new Date().toLocaleDateString("en-IN",{weekday:"short",day:"numeric",month:"short"})}
+          <div style={{ fontSize: 11, color: "rgba(255,255,255,.65)", marginTop: 1, fontWeight: 700 }}>
+            Logged in as {admin.name}
           </div>
         </div>
-        <button onClick={onLogout} style={{ background:"rgba(230,57,70,.2)", border:"1px solid rgba(230,57,70,.4)",
-          color:"#FF6B7A", borderRadius:10, padding:"8px 16px", fontSize:12, fontWeight:700,
-          cursor:"pointer", fontFamily:"'Poppins',sans-serif" }}>Logout</button>
+        <button onClick={onLogout} style={{
+          background: "rgba(255,255,255,.2)", border: "1.5px solid rgba(255,255,255,.3)",
+          borderRadius: 10, padding: "7px 14px", fontSize: 12, fontWeight: 800,
+          color: "#fff", cursor: "pointer",
+        }}>Logout</button>
       </div>
 
-      <div style={{ display:"flex", background:"#fff", borderBottom:"2px solid #EDE0D4", overflowX:"auto" }}>
-        {TABS.map(t => (
-          <button key={t.id} onClick={()=>setTab(t.id)} style={{
-            flex:"0 0 auto", padding:"13px 20px", border:"none", background:"none",
-            fontFamily:"'Poppins',sans-serif", fontWeight:700, fontSize:13, cursor:"pointer",
-            color:tab===t.id?"#E85D04":"#6B4C3B",
-            borderBottom:tab===t.id?"3px solid #E85D04":"3px solid transparent",
-            transition:"all .2s", whiteSpace:"nowrap", display:"flex", alignItems:"center", gap:6 }}>
+      {/* Tab Bar */}
+      <div style={{
+        display: "flex", background: P.surface,
+        borderBottom: `1.5px solid ${P.border}`,
+        boxShadow: "0 2px 10px rgba(160,70,20,.06)",
+      }} className="no-scroll">
+        {tabs.map(t => (
+          <button key={t.id} onClick={() => setTab(t.id)} style={{
+            flex: "1 0 auto", padding: "13px 8px", border: "none",
+            background: "transparent",
+            borderBottom: `3px solid ${tab === t.id ? P.orange : "transparent"}`,
+            color: tab === t.id ? P.orange : P.textSoft,
+            fontWeight: 800, fontSize: 12, cursor: "pointer",
+            fontFamily: "'Nunito',sans-serif", transition: "all .2s",
+          }}>
             {t.icon} {t.label}
-            {t.badge > 0 && <span style={{ background:"#E63946",color:"#fff",borderRadius:10,padding:"1px 7px",fontSize:11,fontWeight:800 }}>{t.badge}</span>}
           </button>
         ))}
       </div>
 
-      <div style={{ padding:16, maxWidth:900, margin:"0 auto" }}>
-        {tab==="orders"    && <AdminOrders    orders={orders} setOrders={setOrders} setToast={setToast} />}
-        {tab==="inventory" && <AdminInventory menu={menu}   setMenu={setMenu}     setToast={setToast} />}
-        {tab==="menu"      && <AdminMenu      menu={menu}   setMenu={setMenu}     setToast={setToast} />}
-        {tab==="reports"   && <AdminReports   orders={orders} />}
+      <div style={{ maxWidth: 640, margin: "0 auto", padding: "16px" }}>
+        {tab === "orders"  && <AdminOrders orders={orders} onUpdate={updateStatus} />}
+        {tab === "menu"    && <AdminMenu menu={menu} setMenu={setMenu} toast={setToast} confirm={setConfirm} />}
+        {tab === "reports" && <AdminReports orders={orders} />}
+        {tab === "suggest" && <SuggestionTab />}
       </div>
     </div>
   );
 }
 
-function AdminOrders({ orders, setOrders, setToast }) {
+// ─── Orders ───────────────────────────────────────────────────────
+function AdminOrders({ orders, onUpdate }) {
   const [filter, setFilter] = useState("All");
-  const statuses = ["All","Pending","Preparing","Ready","Delivered","Cancelled"];
-  const filtered = filter==="All" ? [...orders].reverse() : [...orders].filter(o=>o.status===filter).reverse();
+  const statuses = ["All", "Pending", "Preparing", "Ready", "Delivered", "Cancelled"];
+  const shown = filter === "All" ? [...orders].reverse() : [...orders].filter(o => o.status === filter).reverse();
 
-  const updateStatus = (id, status) => {
-    setOrders(os => os.map(o => o.id===id ? {...o,status} : o));
-    setToast({ msg:`Marked as ${status}`, type:"success" });
-  };
+  return (
+    <div>
+      <div className="no-scroll" style={{ display: "flex", gap: 7, overflowX: "auto", paddingBottom: 8, marginBottom: 16 }}>
+        {statuses.map(s => {
+          const sc = STATUS_C[s] || { fg: P.orange, bg: P.orangeXL };
+          const active = filter === s;
+          return (
+            <button key={s} onClick={() => setFilter(s)} style={{
+              flex: "0 0 auto", padding: "7px 14px", borderRadius: 20,
+              border: `1.5px solid ${active ? sc.fg : P.border}`,
+              background: active ? sc.bg : P.surface,
+              color: active ? sc.fg : P.textSoft,
+              fontWeight: 800, fontSize: 11, cursor: "pointer",
+              whiteSpace: "nowrap", fontFamily: "'Nunito',sans-serif",
+              transition: "all .2s",
+            }}>{s}</button>
+          );
+        })}
+      </div>
+      {shown.length === 0 && (
+        <div style={{ textAlign: "center", padding: "50px 20px", color: P.textFaint }}>
+          <div style={{ fontSize: 48, marginBottom: 12 }}>📋</div>
+          <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, color: P.textSoft }}>No orders yet</div>
+        </div>
+      )}
+      {shown.map(order => {
+        const sc = STATUS_C[order.status] || { fg: P.orange, bg: P.orangeXL };
+        return (
+          <div key={order.id} style={{ ...surfaceCard }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
+              <div>
+                <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 900, fontSize: 15, color: P.text }}>
+                  #{String(order.id).slice(-4)} — {order.customerName}
+                </div>
+                <div style={{ fontSize: 11, color: P.textSoft, marginTop: 2 }}>
+                  {order.date} {order.time} · {order.payMode}
+                  {order.payMode === "UPI" && order.txnId && ` · TXN: ${order.txnId}`}
+                </div>
+              </div>
+              <div style={{
+                background: sc.bg, color: sc.fg,
+                borderRadius: 10, padding: "4px 11px", fontSize: 11, fontWeight: 800, whiteSpace: "nowrap",
+              }}>{order.status}</div>
+            </div>
+            <div style={{ marginBottom: 10 }}>
+              {order.items.map(i => (
+                <div key={i.id} style={{ fontSize: 12, color: P.textMid, marginBottom: 3, fontWeight: 600 }}>
+                  {i.emoji} {i.name} × {i.qty} — ₹{i.price * i.qty}
+                </div>
+              ))}
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+              <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 900, color: P.orange, fontSize: 18 }}>₹{order.total}</div>
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                {["Pending", "Preparing", "Ready", "Delivered", "Cancelled"]
+                  .filter(s => s !== order.status)
+                  .map(s => {
+                    const sc2 = STATUS_C[s] || { fg: P.orange, bg: P.orangeXL };
+                    return (
+                      <button key={s} onClick={() => onUpdate(order.id, s)} style={{
+                        background: sc2.bg, color: sc2.fg,
+                        border: `1px solid ${sc2.fg}30`, borderRadius: 8,
+                        padding: "5px 11px", fontSize: 11, fontWeight: 800, cursor: "pointer",
+                        fontFamily: "'Nunito',sans-serif",
+                      }}>{s}</button>
+                    );
+                  })}
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
-  const waMsg = (o) => {
-    const msg = encodeURIComponent(`🥐 *Nadiad Special Puff*\n\nHi ${o.customerName}! Your order *#${String(o.id).slice(-4)}* is *${o.status}* 🎉\n\n`
-      + o.items.map(i=>`• ${i.emoji} ${i.name} × ${i.qty}`).join("\n")
-      + `\n\n💰 Total: ₹${o.total}\n${o.status==="Ready"?"✅ Please collect your order at the counter!":"Thank you for ordering! 🙏"}`);
-    return `https://wa.me/91${o.customerPhone}?text=${msg}`;
+// ─── Menu Management ──────────────────────────────────────────────
+function AdminMenu({ menu, setMenu, toast, confirm }) {
+  const [showAdd, setShowAdd] = useState(false);
+  const [form, setForm] = useState({ name: "", price: "", cat: "Regular", emoji: "🥐", stock: "50", desc: "" });
+
+  const addItem = () => {
+    if (!form.name.trim() || !form.price) { toast({ msg: "Name & price required", type: "error" }); return; }
+    setMenu(m => [...m, {
+      id: Date.now(), name: form.name.trim(), price: Number(form.price),
+      cat: form.cat, emoji: form.emoji, stock: Number(form.stock) || 50,
+      desc: form.desc, popular: false,
+    }]);
+    toast({ msg: `${form.name} added!`, type: "success" });
+    setForm({ name: "", price: "", cat: "Regular", emoji: "🥐", stock: "50", desc: "" });
+    setShowAdd(false);
   };
 
   return (
     <div>
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:10, marginBottom:16 }}>
-        {["Pending","Preparing","Ready","Delivered"].map((s,i)=>(
-          <div key={s} style={{ background:["#E85D04","#F48C06","#2D6A4F","#457B9D"][i], borderRadius:14, padding:"12px 14px", color:"#fff" }}>
-            <div style={{ fontFamily:"'Baloo 2',cursive", fontWeight:800, fontSize:26 }}>{orders.filter(o=>o.status===s).length}</div>
-            <div style={{ fontSize:11, fontWeight:600, opacity:.85 }}>{s}</div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+        <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 900, fontSize: 18, color: P.text }}>
+          🥐 Menu Items ({menu.length})
+        </div>
+        <button onClick={() => setShowAdd(s => !s)} style={solidBtn(showAdd ? P.red : P.green, true)}>
+          {showAdd ? "✕ Cancel" : "+ Add Item"}
+        </button>
+      </div>
+
+      {showAdd && (
+        <div className="slidein" style={{ ...surfaceCard, border: `1.5px solid ${P.green}44`, marginBottom: 16 }}>
+          <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 800, marginBottom: 14, color: P.green }}>Add New Item</div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 10 }}>
+            <input style={lightInp} placeholder="Item Name *" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
+            <input style={lightInp} placeholder="Price ₹ *" type="number" value={form.price} onChange={e => setForm(f => ({ ...f, price: e.target.value }))} />
+            <input style={lightInp} placeholder="Emoji 🥐" value={form.emoji} onChange={e => setForm(f => ({ ...f, emoji: e.target.value }))} />
+            <input style={lightInp} placeholder="Stock qty" type="number" value={form.stock} onChange={e => setForm(f => ({ ...f, stock: e.target.value }))} />
           </div>
-        ))}
-      </div>
+          <select style={{ ...lightInp, marginBottom: 10 }} value={form.cat} onChange={e => setForm(f => ({ ...f, cat: e.target.value }))}>
+            {CATS.filter(c => c !== "All").map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
+          <textarea style={{ ...lightInp, minHeight: 60, resize: "vertical", marginBottom: 12 }}
+            placeholder="Description" value={form.desc} onChange={e => setForm(f => ({ ...f, desc: e.target.value }))} />
+          <button onClick={addItem} style={{ ...solidBtn(P.green), width: "100%" }}>Add to Menu</button>
+        </div>
+      )}
 
-      <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginBottom:16 }}>
-        {statuses.map(s=>(
-          <button key={s} onClick={()=>setFilter(s)} style={{ padding:"7px 16px", borderRadius:20,
-            border:"2px solid", borderColor:filter===s?"#E85D04":"#E8DDD5",
-            background:filter===s?"#E85D04":"#fff", color:filter===s?"#fff":"#6B4C3B",
-            fontWeight:700, fontSize:12, cursor:"pointer", fontFamily:"'Poppins',sans-serif" }}>{s}</button>
-        ))}
-      </div>
-
-      {filtered.length===0 ? (
-        <div style={{ ...cardStyle, textAlign:"center", color:"#BBA99A", padding:40 }}>No orders here!</div>
-      ) : filtered.map(o=>(
-        <div key={o.id} style={{ ...cardStyle, borderLeft:`5px solid ${SC[o.status]||"#E85D04"}` }}>
-          <div style={{ display:"flex", justifyContent:"space-between", flexWrap:"wrap", gap:8, marginBottom:8 }}>
-            <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap" }}>
-              <span style={{ fontFamily:"'Baloo 2',cursive", fontWeight:800, fontSize:18 }}>#{String(o.id).slice(-4)}</span>
-              <span style={bdg(SC[o.status]||"#E85D04")}>{o.status}</span>
-              <span style={bdg("#8B4513")}>{o.orderType}</span>
-              <span style={bdg("#457B9D")}>{o.payMode}</span>
+      {menu.map(item => {
+        const cfg = CAT_CFG[item.cat] || CAT_CFG.Regular;
+        return (
+          <div key={item.id} style={{ ...surfaceCard, padding: "13px 16px", display: "flex", alignItems: "center", gap: 12 }}>
+            <div style={{
+              fontSize: 22, width: 40, height: 40, textAlign: "center", lineHeight: "40px",
+              background: cfg.bg, borderRadius: 10, border: `1px solid ${cfg.color}20`,
+            }}>{item.emoji}</div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: 800, fontSize: 13, color: P.text }}>{item.name}</div>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 4 }}>
+                <span style={{
+                  background: cfg.bg, color: cfg.color,
+                  borderRadius: 8, padding: "2px 9px", fontSize: 10, fontWeight: 800,
+                }}>{item.cat}</span>
+                <span style={{ color: P.orange, fontWeight: 900, fontSize: 13 }}>₹{item.price}</span>
+                <span style={{ color: P.textFaint, fontSize: 11 }}>Stock: {item.stock}</span>
+              </div>
             </div>
-            <div style={{ fontSize:12, color:"#BBA99A" }}>{o.date} · {o.time}</div>
+            <button style={{ ...solidBtn(P.red, true), padding: "6px 12px", fontSize: 11 }}
+              onClick={() => confirm({
+                msg: `Remove "${item.name}" from menu?`,
+                yes: () => { setMenu(m => m.filter(i => i.id !== item.id)); confirm(null); toast({ msg: "Item removed", type: "success" }); },
+              })}>🗑️</button>
           </div>
-          <div style={{ fontSize:13, color:"#6B4C3B", marginBottom:4 }}>
-            👤 <strong>{o.customerName}</strong>
-            {o.customerPhone && <span style={{ marginLeft:8, color:"#25D366" }}>📱 {o.customerPhone}</span>}
-            {o.txnId && <span style={{ marginLeft:8, fontSize:11, color:"#BBA99A" }}>UPI: {o.txnId}</span>}
+        );
+      })}
+    </div>
+  );
+}
+
+// ─── Reports ──────────────────────────────────────────────────────
+function AdminReports({ orders }) {
+  const today = new Date().toLocaleDateString("en-IN");
+  const valid     = orders.filter(o => o.status !== "Cancelled");
+  const todayO    = valid.filter(o => o.date === today);
+  const todayS    = todayO.reduce((s, o) => s + o.total, 0);
+  const allS      = valid.reduce((s, o) => s + o.total, 0);
+  const avgVal    = todayO.length ? Math.round(todayS / todayO.length) : 0;
+  const cashPend  = orders.filter(o => o.payMode === "Cash" && !["Delivered", "Cancelled"].includes(o.status)).reduce((s, o) => s + o.total, 0);
+
+  const itemMap = {};
+  todayO.forEach(o => o.items.forEach(i => {
+    if (!itemMap[i.name]) itemMap[i.name] = { qty: 0, rev: 0, emoji: i.emoji };
+    itemMap[i.name].qty += i.qty; itemMap[i.name].rev += i.price * i.qty;
+  }));
+  const topItems = Object.entries(itemMap).sort((a, b) => b[1].rev - a[1].rev).slice(0, 8);
+
+  const dayMap = {};
+  valid.forEach(o => { dayMap[o.date] = (dayMap[o.date] || 0) + o.total; });
+  const days = Object.entries(dayMap).slice(-7);
+  const maxD = Math.max(...days.map(d => d[1]), 1);
+
+  const Stat = ({ grad, val, label, icon }) => (
+    <div style={{ background: grad, borderRadius: 18, padding: "18px", color: "#fff" }}>
+      <div style={{ fontSize: 26, marginBottom: 6 }}>{icon}</div>
+      <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 900, fontSize: 24 }}>{val}</div>
+      <div style={{ fontSize: 11, opacity: .8, fontWeight: 700, marginTop: 3 }}>{label}</div>
+    </div>
+  );
+
+  return (
+    <div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
+        <Stat grad={`linear-gradient(135deg,#9A3500,${P.orange})`}    val={`₹${todayS}`}   label="Today's Sales"   icon="💰" />
+        <Stat grad={`linear-gradient(135deg,#1E5C3A,${P.green})`}     val={todayO.length}   label="Today's Orders"  icon="📦" />
+        <Stat grad={`linear-gradient(135deg,#1A3A5C,${P.blue})`}      val={`₹${avgVal}`}   label="Avg Order Value" icon="📈" />
+        <Stat grad={`linear-gradient(135deg,#7A5000,${P.amber})`}     val={`₹${cashPend}`} label="Cash Pending"    icon="💵" />
+      </div>
+
+      <div style={{
+        ...surfaceCard, textAlign: "center",
+        background: `linear-gradient(135deg,${P.orangeXL},${P.amberL})`,
+        border: `1px solid ${P.amber}44`,
+      }}>
+        <div style={{ fontSize: 28, marginBottom: 6 }}>🏆</div>
+        <div style={{
+          fontFamily: "'Sora',sans-serif", fontWeight: 900, fontSize: 38,
+          background: `linear-gradient(135deg,${P.orange},${P.amber})`,
+          WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
+        }}>₹{allS}</div>
+        <div style={{ fontSize: 12, color: P.textMid, fontWeight: 700, marginTop: 2 }}>
+          Total All-Time Revenue · {valid.length} orders
+        </div>
+      </div>
+
+      {days.length > 0 && (
+        <div style={surfaceCard}>
+          <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 800, fontSize: 15, marginBottom: 16, color: P.text }}>
+            📊 Sales (Last {days.length} Days)
           </div>
-          <div style={{ fontSize:13, marginBottom:10, color:"#2C1810", lineHeight:2 }}>
-            {o.items.map(i=>`${i.emoji} ${i.name} ×${i.qty}`).join("   •   ")}
+          <div style={{ display: "flex", alignItems: "flex-end", gap: 8, height: 100 }}>
+            {days.map(([date, amt]) => (
+              <div key={date} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+                <div style={{ fontSize: 9, fontWeight: 800, color: P.orange }}>₹{amt}</div>
+                <div style={{
+                  width: "100%", background: `linear-gradient(180deg,${P.orange},${P.amber})`,
+                  borderRadius: "5px 5px 0 0",
+                  height: `${(amt / maxD) * 68}px`, minHeight: 4,
+                  boxShadow: `0 -3px 12px ${P.orange}30`,
+                }} />
+                <div style={{ fontSize: 8, color: P.textFaint }}>{date.split("/").slice(0, 2).join("/")}</div>
+              </div>
+            ))}
           </div>
-          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap", gap:8 }}>
-            <span style={{ fontFamily:"'Baloo 2',cursive", fontWeight:800, fontSize:22, color:"#E85D04" }}>₹{o.total}</span>
-            <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
-              {o.status==="Pending"    && <button style={fillBtn("#F48C06",true)} onClick={()=>updateStatus(o.id,"Preparing")}>👨‍🍳 Preparing</button>}
-              {o.status==="Preparing" && <button style={fillBtn("#2D6A4F",true)} onClick={()=>updateStatus(o.id,"Ready")}>✅ Ready</button>}
-              {o.status==="Ready"     && <button style={fillBtn("#457B9D",true)} onClick={()=>updateStatus(o.id,"Delivered")}>🚀 Delivered</button>}
-              {!["Cancelled","Delivered"].includes(o.status) && (
-                <button style={fillBtn("#9E2A2B",true)} onClick={()=>updateStatus(o.id,"Cancelled")}>✕ Cancel</button>
-              )}
-              {o.customerPhone?.length===10 && (
-                <a href={waMsg(o)} target="_blank" rel="noreferrer"
-                  style={{ ...fillBtn("#25D366",true), textDecoration:"none", display:"inline-block" }}>📲 WhatsApp</a>
-              )}
+        </div>
+      )}
+
+      {topItems.length > 0 && (
+        <div style={surfaceCard}>
+          <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 800, fontSize: 15, marginBottom: 16, color: P.text }}>
+            🏆 Today's Top Sellers
+          </div>
+          {topItems.map(([name, data], i) => (
+            <div key={name} style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
+              <div style={{
+                fontFamily: "'Sora',sans-serif", fontWeight: 900, fontSize: 18, width: 24,
+                color: [P.orange, P.amber, "#A07050"][i] || P.textFaint,
+              }}>{i + 1}</div>
+              <span style={{ fontSize: 20 }}>{data.emoji}</span>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 800, fontSize: 13, color: P.text }}>{name}</div>
+                <div style={{ fontSize: 11, color: P.textSoft }}>{data.qty} sold</div>
+              </div>
+              <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 900, color: P.orange, fontSize: 17 }}>₹{data.rev}</div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Growth Ideas ─────────────────────────────────────────────────
+function SuggestionTab() {
+  const ideas = [
+    { icon: "🌟", title: "Loyalty Points System",       desc: "₹10 = 1 point. 50 points = ₹5 off. Drives repeat customers!", color: P.amber,  tag: "Revenue" },
+    { icon: "📲", title: "WhatsApp Order Status",        desc: "Auto-notify customers when order is Ready. Reduces counter rush.", color: P.green,  tag: "Experience" },
+    { icon: "⏰", title: "Pre-Order / Schedule Order",   desc: "Book puffs for a fixed time — great for office/school rush.", color: P.blue,   tag: "Operations" },
+    { icon: "🎂", title: "Combo Meal Deals",             desc: "2 puffs + 1 drink at ₹80. Increases average order value.", color: P.orange, tag: "Revenue" },
+    { icon: "📦", title: "Bulk / Party Orders",          desc: "Special form for 10+ puffs with advance payment. Great for events!", color: "#7040B0", tag: "New Revenue" },
+    { icon: "⭐", title: "Customer Reviews & Ratings",   desc: "Let customers rate after delivery. Builds trust & social proof.", color: P.amber,  tag: "Trust" },
+    { icon: "🎟️", title: "Daily Specials Banner",        desc: "'Puff of the Day' with a special price. Creates urgency & excitement.", color: P.green,  tag: "Engagement" },
+    { icon: "📊", title: "Low Stock Alerts",             desc: "Admin alert when any item stock drops below 10. Prevent overselling.", color: P.red,    tag: "Operations" },
+    { icon: "🛵", title: "Delivery Zone Checker",        desc: "Simple map to show if your area can get delivery. Plan expansion!", color: P.blue,   tag: "Growth" },
+    { icon: "🔔", title: "Push Notifications for Deals", desc: "Notify repeat customers about new puffs or discount days.", color: "#9E2A2B", tag: "Marketing" },
+  ];
+  return (
+    <div>
+      <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 900, fontSize: 20, color: P.text, marginBottom: 6 }}>
+        💡 Growth Ideas for Your Business
+      </div>
+      <div style={{ fontSize: 13, color: P.textSoft, marginBottom: 20, lineHeight: 1.6 }}>
+        10 high-impact features to take Nadiad Puffwala to the next level!
+      </div>
+      {ideas.map((idea, i) => (
+        <div key={i} className="fadeup" style={{ animationDelay: `${i * .05}s`, ...surfaceCard, border: `1.5px solid ${idea.color}30`, marginBottom: 12 }}>
+          <div style={{ display: "flex", alignItems: "flex-start", gap: 14 }}>
+            <div style={{ fontSize: 30, flexShrink: 0, lineHeight: 1, marginTop: 2 }}>{idea.icon}</div>
+            <div style={{ flex: 1 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 6, marginBottom: 6 }}>
+                <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 800, fontSize: 14, color: P.text }}>{idea.title}</div>
+                <span style={{ background: idea.color + "18", color: idea.color, borderRadius: 8, padding: "3px 10px", fontSize: 10, fontWeight: 800, whiteSpace: "nowrap" }}>{idea.tag}</span>
+              </div>
+              <div style={{ fontSize: 13, color: P.textMid, lineHeight: 1.6 }}>{idea.desc}</div>
             </div>
           </div>
         </div>
@@ -551,207 +1184,12 @@ function AdminOrders({ orders, setOrders, setToast }) {
   );
 }
 
-function AdminInventory({ menu, setMenu, setToast }) {
-  const [editId, setEditId] = useState(null);
-  const [editVal, setEditVal] = useState("");
-  const low = menu.filter(i => i.stock<=10 && i.stock!==999);
-
-  const save = (id) => {
-    setMenu(m => m.map(i => i.id===id ? {...i,stock:parseInt(editVal)||0} : i));
-    setEditId(null);
-    setToast({ msg:"Stock updated!", type:"success" });
-  };
-
-  return (
-    <div>
-      {low.length > 0 && (
-        <div style={{ background:"#FFF3CD", border:"2px solid #F48C06", borderRadius:14, padding:"14px 18px", marginBottom:16 }}>
-          <strong style={{ color:"#F48C06" }}>⚠️ Low Stock Alert!</strong>
-          <div style={{ fontSize:13, marginTop:6, lineHeight:1.8 }}>
-            {low.map(i=>`${i.emoji} ${i.name} (${i.stock} left)`).join("   •   ")}
-          </div>
-        </div>
-      )}
-      <div style={cardStyle}>
-        <div style={{ fontFamily:"'Baloo 2',cursive", fontWeight:800, fontSize:18, marginBottom:14 }}>📦 Stock Management</div>
-        {menu.map(item=>(
-          <div key={item.id} style={{ display:"flex", alignItems:"center", gap:10, padding:"12px 0", borderBottom:"1px solid #EDE0D4", flexWrap:"wrap" }}>
-            <span style={{ fontSize:24 }}>{item.emoji}</span>
-            <div style={{ flex:1, minWidth:130 }}>
-              <div style={{ fontWeight:700, fontSize:14 }}>{item.name}</div>
-              <div style={{ display:"flex", gap:8, marginTop:3 }}>
-                <span style={bdg("#8B4513")}>{item.cat}</span>
-                <span style={{ fontWeight:700, color:"#E85D04", fontSize:13 }}>₹{item.price}</span>
-              </div>
-            </div>
-            <div style={{ display:"flex", gap:8, alignItems:"center" }}>
-              {editId===item.id ? (
-                <>
-                  <input style={{ ...inp, width:80 }} type="number" value={editVal}
-                    onChange={e=>setEditVal(e.target.value)} autoFocus
-                    onKeyDown={e=>e.key==="Enter"&&save(item.id)} />
-                  <button style={fillBtn("#2D6A4F",true)} onClick={()=>save(item.id)}>Save</button>
-                  <button style={fillBtn("#BBA99A",true)} onClick={()=>setEditId(null)}>✕</button>
-                </>
-              ) : (
-                <>
-                  <span style={bdg(item.stock===999?"#457B9D":item.stock===0?"#9E2A2B":item.stock<=10?"#F48C06":"#2D6A4F")}>
-                    {item.stock===999?"Unlimited":`${item.stock} left`}
-                  </span>
-                  {item.stock !== 999 && (
-                    <button style={fillBtn("#F48C06",true)} onClick={()=>{setEditId(item.id);setEditVal(item.stock);}}>✏️ Edit</button>
-                  )}
-                </>
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function AdminMenu({ menu, setMenu, setToast }) {
-  const [form, setForm] = useState({ name:"",price:"",stock:"",cat:"Puffs",emoji:"🥐",desc:"" });
-  const [confirm, setConfirm] = useState(null);
-
-  const add = () => {
-    if (!form.name||!form.price) { setToast({ msg:"Name & price required!", type:"error" }); return; }
-    setMenu(m=>[...m,{ ...form, id:Date.now(), price:parseInt(form.price), stock:parseInt(form.stock)||0 }]);
-    setForm({ name:"",price:"",stock:"",cat:"Puffs",emoji:"🥐",desc:"" });
-    setToast({ msg:"Item added!", type:"success" });
-  };
-
-  const remove = (id) => { setMenu(m=>m.filter(i=>i.id!==id)); setConfirm(null); setToast({ msg:"Item removed", type:"info" }); };
-
-  return (
-    <div>
-      {confirm && <ConfirmModal msg={`Remove "${confirm.name}" from menu?`} onYes={()=>remove(confirm.id)} onNo={()=>setConfirm(null)} />}
-      <div style={cardStyle}>
-        <div style={{ fontFamily:"'Baloo 2',cursive", fontWeight:800, fontSize:18, marginBottom:14 }}>➕ Add New Menu Item</div>
-        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:12 }}>
-          <input style={inp} placeholder="Item Name *" value={form.name} onChange={e=>setForm({...form,name:e.target.value})} />
-          <input style={inp} placeholder="Price ₹ *" type="number" value={form.price} onChange={e=>setForm({...form,price:e.target.value})} />
-          <input style={inp} placeholder="Initial Stock" type="number" value={form.stock} onChange={e=>setForm({...form,stock:e.target.value})} />
-          <input style={inp} placeholder="Emoji icon" value={form.emoji} onChange={e=>setForm({...form,emoji:e.target.value})} />
-          <select style={inp} value={form.cat} onChange={e=>setForm({...form,cat:e.target.value})}>
-            {["Puffs","Sweet","Drinks"].map(c=><option key={c}>{c}</option>)}
-          </select>
-          <input style={inp} placeholder="Short description" value={form.desc} onChange={e=>setForm({...form,desc:e.target.value})} />
-        </div>
-        <button style={fillBtn()} onClick={add}>Add to Menu</button>
-      </div>
-      <div style={cardStyle}>
-        <div style={{ fontFamily:"'Baloo 2',cursive", fontWeight:800, fontSize:18, marginBottom:14 }}>🌿 Current Menu (Pure Veg)</div>
-        {menu.map(item=>(
-          <div key={item.id} style={{ display:"flex", alignItems:"center", gap:10, padding:"11px 0", borderBottom:"1px solid #EDE0D4", flexWrap:"wrap" }}>
-            <span style={{ fontSize:22 }}>{item.emoji}</span>
-            <div style={{ flex:1 }}>
-              <div style={{ fontWeight:700, fontSize:14 }}>{item.name}</div>
-              <div style={{ display:"flex", gap:6, flexWrap:"wrap", marginTop:3 }}>
-                <span style={bdg("#8B4513")}>{item.cat}</span>
-                <span style={{ color:"#E85D04", fontWeight:700, fontSize:13 }}>₹{item.price}</span>
-                {item.desc && <span style={{ fontSize:11, color:"#BBA99A" }}>{item.desc}</span>}
-              </div>
-            </div>
-            <button style={fillBtn("#9E2A2B",true)} onClick={()=>setConfirm(item)}>🗑️ Remove</button>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function AdminReports({ orders }) {
-  const today = new Date().toLocaleDateString("en-IN");
-  const valid  = orders.filter(o=>o.status!=="Cancelled");
-  const todayO = valid.filter(o=>o.date===today);
-  const todayS = todayO.reduce((s,o)=>s+o.total,0);
-  const allS   = valid.reduce((s,o)=>s+o.total,0);
-  const avgVal = todayO.length ? Math.round(todayS/todayO.length) : 0;
-  const cashPending = orders.filter(o=>o.payMode==="Cash"&&!["Delivered","Cancelled"].includes(o.status)).reduce((s,o)=>s+o.total,0);
-
-  const itemMap = {};
-  todayO.forEach(o=>o.items.forEach(i=>{
-    if (!itemMap[i.name]) itemMap[i.name]={qty:0,rev:0,emoji:i.emoji};
-    itemMap[i.name].qty+=i.qty; itemMap[i.name].rev+=i.price*i.qty;
-  }));
-  const topItems = Object.entries(itemMap).sort((a,b)=>b[1].rev-a[1].rev);
-
-  const dayMap = {};
-  valid.forEach(o=>{ dayMap[o.date]=(dayMap[o.date]||0)+o.total; });
-  const days  = Object.entries(dayMap).slice(-7);
-  const maxD  = Math.max(...days.map(d=>d[1]),1);
-
-  const Stat = ({bg,val,label}) => (
-    <div style={{ background:bg, borderRadius:14, padding:"14px 16px", color:"#fff" }}>
-      <div style={{ fontFamily:"'Baloo 2',cursive", fontWeight:800, fontSize:26 }}>{val}</div>
-      <div style={{ fontSize:12, opacity:.85, fontWeight:600, marginTop:2 }}>{label}</div>
-    </div>
-  );
-
-  return (
-    <div>
-      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, marginBottom:12 }}>
-        <Stat bg="linear-gradient(135deg,#E85D04,#F48C06)" val={`₹${todayS}`}  label="Today's Sales" />
-        <Stat bg="linear-gradient(135deg,#2D6A4F,#40916C)" val={todayO.length}  label="Today's Orders" />
-        <Stat bg="linear-gradient(135deg,#457B9D,#1D3557)" val={`₹${avgVal}`}  label="Avg Order Value" />
-        <Stat bg="linear-gradient(135deg,#8B4513,#A0522D)" val={`₹${cashPending}`} label="Cash Pending" />
-      </div>
-      <div style={{ ...cardStyle, background:"linear-gradient(135deg,#2C1810,#3D2314)", marginBottom:16 }}>
-        <div style={{ fontFamily:"'Baloo 2',cursive", fontWeight:900, fontSize:32, color:"#F48C06" }}>₹{allS}</div>
-        <div style={{ fontSize:13, color:"rgba(255,248,240,.7)", fontWeight:600, marginTop:2 }}>
-          Total Revenue All-Time · {valid.length} orders
-        </div>
-      </div>
-
-      {days.length > 0 && (
-        <div style={cardStyle}>
-          <div style={{ fontFamily:"'Baloo 2',cursive", fontWeight:800, fontSize:17, marginBottom:14 }}>📊 Sales Chart (Last {days.length} Days)</div>
-          <div style={{ display:"flex", alignItems:"flex-end", gap:8, height:110 }}>
-            {days.map(([date,amt])=>(
-              <div key={date} style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", gap:4 }}>
-                <div style={{ fontSize:10, fontWeight:700, color:"#E85D04" }}>₹{amt}</div>
-                <div style={{ width:"100%", background:"linear-gradient(180deg,#E85D04,#F48C06)", borderRadius:"6px 6px 0 0",
-                  height:`${(amt/maxD)*70}px`, minHeight:4 }} />
-                <div style={{ fontSize:9, color:"#BBA99A" }}>{date.split("/").slice(0,2).join("/")}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {topItems.length > 0 && (
-        <div style={cardStyle}>
-          <div style={{ fontFamily:"'Baloo 2',cursive", fontWeight:800, fontSize:17, marginBottom:14 }}>🏆 Today's Top Sellers</div>
-          {topItems.map(([name,data],i)=>(
-            <div key={name} style={{ display:"flex", alignItems:"center", gap:10, marginBottom:12 }}>
-              <div style={{ fontFamily:"'Baloo 2',cursive", fontWeight:800, fontSize:18,
-                color:["#E85D04","#F48C06","#8B4513"][i]||"#BBA99A", width:24 }}>{i+1}</div>
-              <span style={{ fontSize:20 }}>{data.emoji}</span>
-              <div style={{ flex:1 }}>
-                <div style={{ fontWeight:700, fontSize:14 }}>{name}</div>
-                <div style={{ fontSize:12, color:"#BBA99A" }}>{data.qty} sold</div>
-              </div>
-              <div style={{ fontFamily:"'Baloo 2',cursive", fontWeight:800, color:"#E85D04", fontSize:17 }}>₹{data.rev}</div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {orders.length===0 && (
-        <div style={{ ...cardStyle, textAlign:"center", color:"#BBA99A", padding:40 }}>No data yet. Orders will appear here!</div>
-      )}
-    </div>
-  );
-}
-
 // ══════════════════════════════════════════════════════════════════
 // ROOT
 // ══════════════════════════════════════════════════════════════════
 export default function App() {
-  const [menu,   setMenu]   = useLS("nsp_menu_v3",   INIT_MENU);
-  const [orders, setOrders] = useLS("nsp_orders_v3", []);
+  const [menu,   setMenu]   = useLS("nsp_menu_v5",   INIT_MENU);
+  const [orders, setOrders] = useLS("nsp_orders_v5", []);
   const [mode,   setMode]   = useState("customer");
   const [admin,  setAdmin]  = useState(null);
   const [showAdminBtn, setShowAdminBtn] = useState(false);
@@ -761,37 +1199,42 @@ export default function App() {
   const onPlaceOrder = (order) => {
     setOrders(os => [...os, order]);
     setMenu(m => m.map(item => {
-      const ci = order.items.find(c => c.id===item.id);
-      return ci && item.stock!==999 ? {...item, stock:Math.max(0,item.stock-ci.qty)} : item;
+      const ci = order.items.find(c => c.id === item.id);
+      return ci && item.stock !== 999 ? { ...item, stock: Math.max(0, item.stock - ci.qty) } : item;
     }));
   };
 
-  if (mode === "adminLogin") return <AdminLogin onLogin={a=>{setAdmin(a);setMode("admin");}} onBack={()=>setMode("customer")} />;
+  if (mode === "adminLogin") return <AdminLogin onLogin={a => { setAdmin(a); setMode("admin"); }} onBack={() => setMode("customer")} />;
   if (mode === "admin" && admin) return (
     <AdminDashboard admin={admin} orders={orders} setOrders={setOrders}
-      menu={menu} setMenu={setMenu} onLogout={()=>{setAdmin(null);setMode("customer");}} />
+      menu={menu} setMenu={setMenu} onLogout={() => { setAdmin(null); setMode("customer"); }} />
   );
 
   return (
     <div>
       <CustomerApp menu={menu} onPlaceOrder={onPlaceOrder} />
-      {/* Floating Admin Access */}
-      <div style={{ position:"fixed", bottom:16, right:16, zIndex:500 }}>
+      {/* Floating Admin Button */}
+      <div style={{ position: "fixed", bottom: 16, right: 16, zIndex: 500 }}>
         {showAdminBtn ? (
-          <div className="pop" style={{ display:"flex", gap:8, alignItems:"center",
-            background:"rgba(28,18,10,.95)", borderRadius:14, padding:"10px 14px",
-            boxShadow:"0 8px 24px rgba(0,0,0,.4)" }}>
-            <span style={{ fontSize:12, color:"rgba(255,248,240,.6)", fontFamily:"'Poppins',sans-serif", whiteSpace:"nowrap" }}>Staff access</span>
-            <button onClick={()=>setMode("adminLogin")} style={{ ...fillBtn("#F48C06",true), fontSize:12, padding:"6px 14px" }}>
+          <div className="pop" style={{
+            display: "flex", gap: 8, alignItems: "center",
+            background: P.surface, borderRadius: 16, padding: "10px 14px",
+            boxShadow: "0 8px 28px rgba(160,70,20,.2)",
+            border: `1.5px solid ${P.border}`,
+          }}>
+            <span style={{ fontSize: 11, color: P.textSoft, fontFamily: "'Nunito',sans-serif", whiteSpace: "nowrap" }}>Staff</span>
+            <button onClick={() => setMode("adminLogin")} style={{ ...solidBtn(P.orange, true), fontSize: 12, padding: "6px 14px" }}>
               Admin Login
             </button>
-            <button onClick={()=>setShowAdminBtn(false)} style={{ background:"none",border:"none",color:"rgba(255,248,240,.4)",cursor:"pointer",fontSize:18,lineHeight:1 }}>×</button>
+            <button onClick={() => setShowAdminBtn(false)} style={{ background: "none", border: "none", color: P.textFaint, cursor: "pointer", fontSize: 20, lineHeight: 1 }}>×</button>
           </div>
         ) : (
-          <button onClick={()=>setShowAdminBtn(true)} title="Staff Login"
-            style={{ width:46, height:46, borderRadius:23, background:"rgba(28,18,10,.75)",
-              border:"none", fontSize:20, cursor:"pointer", backdropFilter:"blur(8px)",
-              boxShadow:"0 4px 16px rgba(0,0,0,.35)", transition:"all .2s" }}>🔐</button>
+          <button onClick={() => setShowAdminBtn(true)} style={{
+            width: 46, height: 46, borderRadius: 23,
+            background: P.surface, border: `1.5px solid ${P.border}`,
+            fontSize: 20, cursor: "pointer",
+            boxShadow: "0 4px 16px rgba(160,70,20,.15)", transition: "all .2s",
+          }}>🔐</button>
         )}
       </div>
     </div>
